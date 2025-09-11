@@ -128,6 +128,7 @@ class ClaudeChatProvider {
 	private _selectedModel: string = 'default'; // Default model
 	private _isProcessing: boolean | undefined;
 	private _draftMessage: string = '';
+	private _rawOutput: string = '';
 
 	constructor(
 		private readonly _extensionUri: vscode.Uri,
@@ -553,16 +554,16 @@ class ClaudeChatProvider {
 			claudeProcess.stdin.end();
 		}
 
-		let rawOutput = '';
+		this._rawOutput = '';
 		let errorOutput = '';
 
 		if (claudeProcess.stdout) {
 			claudeProcess.stdout.on('data', (data) => {
-				rawOutput += data.toString();
+				this._rawOutput += data.toString();
 
 				// Process JSON stream line by line
-				const lines = rawOutput.split('\n');
-				rawOutput = lines.pop() || ''; // Keep incomplete line for next chunk
+				const lines = this._rawOutput.split('\n');
+				this._rawOutput = lines.pop() || ''; // Keep incomplete line for next chunk
 
 				for (const line of lines) {
 					if (line.trim()) {
@@ -1977,24 +1978,39 @@ class ClaudeChatProvider {
 		});
 
 		if (this._currentClaudeProcess) {
-			console.log('Terminating Claude process...');
+			console.log('Force killing Claude process immediately...');
 
-			// Try graceful termination first
-			this._currentClaudeProcess.kill('SIGTERM');
+			// Clear any accumulated stream buffers
+			if (this._currentClaudeProcess.stdout) {
+				this._currentClaudeProcess.stdout.removeAllListeners('data');
+				this._currentClaudeProcess.stdout.destroy();
+			}
+			if (this._currentClaudeProcess.stderr) {
+				this._currentClaudeProcess.stderr.removeAllListeners('data');
+				this._currentClaudeProcess.stderr.destroy();
+			}
 
-			// Force kill after 2 seconds if still running
-			setTimeout(() => {
-				if (this._currentClaudeProcess && !this._currentClaudeProcess.killed) {
-					console.log('Force killing Claude process...');
-					this._currentClaudeProcess.kill('SIGKILL');
-				}
-			}, 2000);
+			// Immediately force kill - no graceful termination
+			this._currentClaudeProcess.kill('SIGKILL');
+
+			// Clear any internal buffer state
+			this._clearInternalBuffers();
 
 			// Clear process reference
 			this._currentClaudeProcess = undefined;
 
+			// Immediately clear any loading or streaming states
+			this._postMessage({
+				type: 'immediateStop'
+			});
+
 			this._postMessage({
 				type: 'clearLoading'
+			});
+
+			// Stop any ongoing message streaming to UI
+			this._postMessage({
+				type: 'stopStreaming'
 			});
 
 			// Send stop confirmation message directly to UI and save
@@ -2007,6 +2023,10 @@ class ClaudeChatProvider {
 		} else {
 			console.log('No Claude process running to stop');
 		}
+	}
+
+	private _clearInternalBuffers(): void {
+		this._rawOutput = '';
 	}
 
 	private _updateConversationIndex(filename: string, conversationData: ConversationData): void {

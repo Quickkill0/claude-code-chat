@@ -1906,6 +1906,18 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					}
 					updateStatusWithTotals();
 					break;
+
+				case 'immediateStop':
+					// Clear any pending message updates
+					hideStopButton();
+					enableButtons();
+					// Stop any ongoing typing animations or partial message display
+					break;
+
+				case 'stopStreaming':
+					// Stop any ongoing streaming message display
+					// Clear any partially rendered messages
+					break;
 					
 				case 'error':
 					if (message.data.trim()) {
