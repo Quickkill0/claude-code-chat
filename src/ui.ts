@@ -56,6 +56,17 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 			</div>
 		</div>
 		
+		<div class="status ready" id="status" style="margin-bottom: 12px;">
+			<div class="status-indicator"></div>
+			<div class="status-text" id="statusText">Initializing...</div>
+			<button class="btn stop" id="stopBtn" onclick="stopRequest()" style="display: none;">
+				<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+					<path d="M6 6h12v12H6z"/>
+				</svg>
+				Stop
+			</button>
+		</div>
+		
 		<div class="input-container" id="inputContainer">
 			<div class="input-modes">
 				<div class="mode-toggle">
@@ -65,6 +76,10 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 				<div class="mode-toggle">
 					<span id="thinkingModeLabel" onclick="toggleThinkingMode()">Thinking Mode</span>
 					<div class="mode-switch" id="thinkingModeSwitch" onclick="toggleThinkingMode()"></div>
+				</div>
+				<div class="mode-toggle">
+					<span id="yoloModeLabel" onclick="toggleYoloMode()">Yolo Mode</span>
+					<div class="mode-switch" id="yoloModeSwitch" onclick="toggleYoloMode()"></div>
 				</div>
 			</div>
 			<div class="textarea-container">
@@ -124,16 +139,6 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 		</div>
 	</div>
 	
-	<div class="status ready" id="status">
-		<div class="status-indicator"></div>
-		<div class="status-text" id="statusText">Initializing...</div>
-		<button class="btn stop" id="stopBtn" onclick="stopRequest()" style="display: none;">
-			<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-				<path d="M6 6h12v12H6z"/>
-			</svg>
-			Stop
-		</button>
-	</div>
 
 			<div id="yoloWarning" class="yolo-warning" style="display: none;">
 			⚠️ Yolo Mode Active: Claude Code will auto-approve all tool requests.
@@ -340,10 +345,6 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 						<button id="showAddPermissionBtn" class="permissions-show-add-btn" onclick="showAddPermissionForm()">
 							+ Add permission
 						</button>
-						<div class="yolo-mode-section">
-							<input type="checkbox" id="yolo-mode" onchange="updateSettings(); updateYoloWarning();">
-							<label for="yolo-mode">Enable Yolo Mode (Auto-allow all permissions)</label>
-						</div>
 					</div>
 				</div>
 

@@ -15,6 +15,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		let selectedFileIndex = -1;
 		let planModeEnabled = false;
 		let thinkingModeEnabled = false;
+		let yoloModeEnabled = false;
 
 		function shouldAutoScroll(messagesDiv) {
 			const threshold = 100; // pixels from bottom
@@ -758,6 +759,23 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			}
 		}
 
+		function toggleYoloMode() {
+			yoloModeEnabled = !yoloModeEnabled;
+			
+			const switchElement = document.getElementById('yoloModeSwitch');
+			if (yoloModeEnabled) {
+				switchElement.classList.add('active');
+			} else {
+				switchElement.classList.remove('active');
+			}
+			
+			// Update the yolo warning visibility
+			updateYoloWarning();
+			
+			// Update settings to save the state
+			updateSettings();
+		}
+
 
 		let totalCost = 0;
 		let totalTokensInput = 0;
@@ -1042,15 +1060,13 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		}
 		
 		function updateYoloWarning() {
-			const yoloModeCheckbox = document.getElementById('yolo-mode');
 			const warning = document.getElementById('yoloWarning');
 			
-			if (!yoloModeCheckbox || !warning) {
+			if (!warning) {
 				return; // Elements not ready yet
 			}
 			
-			const yoloMode = yoloModeCheckbox.checked;
-			warning.style.display = yoloMode ? 'block' : 'none';
+			warning.style.display = yoloModeEnabled ? 'block' : 'none';
 		}
 		
 		function isPermissionError(content) {
@@ -1075,20 +1091,23 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		function enableYoloMode() {
 			sendStats('YOLO mode enabled');
 			
-			// Update the checkbox
-			const yoloModeCheckbox = document.getElementById('yolo-mode');
-			if (yoloModeCheckbox) {
-				yoloModeCheckbox.checked = true;
-				
-				// Trigger the settings update
-				updateSettings();
-				
-				// Show confirmation message
-				addMessage('✅ Yolo Mode enabled! All permission checks will be bypassed for future commands.', 'system');
-				
-				// Update the warning banner
-				updateYoloWarning();
+			// Enable yolo mode
+			yoloModeEnabled = true;
+			
+			// Update the toggle UI
+			const switchElement = document.getElementById('yoloModeSwitch');
+			if (switchElement) {
+				switchElement.classList.add('active');
 			}
+			
+			// Trigger the settings update
+			updateSettings();
+			
+			// Show confirmation message
+			addMessage('✅ Yolo Mode enabled! All permission checks will be bypassed for future commands.', 'system');
+			
+			// Update the warning banner
+			updateYoloWarning();
 		}
 
 		function hideMCPModal() {
@@ -2725,7 +2744,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			const wslDistro = document.getElementById('wsl-distro').value;
 			const wslNodePath = document.getElementById('wsl-node-path').value;
 			const wslClaudePath = document.getElementById('wsl-claude-path').value;
-			const yoloMode = document.getElementById('yolo-mode').checked;
+			const yoloMode = yoloModeEnabled;
 
 			// Update WSL options visibility
 			document.getElementById('wslOptions').style.display = wslEnabled ? 'block' : 'none';
@@ -2946,7 +2965,16 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				document.getElementById('wsl-distro').value = message.data['wsl.distro'] || 'Ubuntu';
 				document.getElementById('wsl-node-path').value = message.data['wsl.nodePath'] || '/usr/bin/node';
 				document.getElementById('wsl-claude-path').value = message.data['wsl.claudePath'] || '/usr/local/bin/claude';
-				document.getElementById('yolo-mode').checked = message.data['permissions.yoloMode'] || false;
+				// Set yolo mode state and update UI
+				yoloModeEnabled = message.data['permissions.yoloMode'] || false;
+				const yoloSwitch = document.getElementById('yoloModeSwitch');
+				if (yoloSwitch) {
+					if (yoloModeEnabled) {
+						yoloSwitch.classList.add('active');
+					} else {
+						yoloSwitch.classList.remove('active');
+					}
+				}
 				
 				// Update yolo warning visibility
 				updateYoloWarning();
