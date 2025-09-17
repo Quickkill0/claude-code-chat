@@ -382,6 +382,15 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 						</div>
 					</label>
 				</div>
+				<div class="tool-item" onclick="selectModel('sonnet1m')">
+					<input type="radio" name="model" id="model-sonnet1m" value="sonnet1m">
+					<label for="model-sonnet1m">
+						<div class="model-title">Sonnet 1M - Extended context</div>
+						<div class="model-description">
+							Sonnet with 1 million token context window
+						</div>
+					</label>
+				</div>
 				<div class="tool-item" onclick="selectModel('default')">
 					<input type="radio" name="model" id="model-default" value="default">
 					<label for="model-default" class="default-model-layout">

@@ -722,7 +722,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					planMode: planModeEnabled,
 					thinkingMode: thinkingModeEnabled
 				});
-				
+
 				messageInput.value = '';
 			}
 		}
@@ -761,20 +761,21 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 
 		function toggleYoloMode() {
 			yoloModeEnabled = !yoloModeEnabled;
-			
+
 			const switchElement = document.getElementById('yoloModeSwitch');
 			if (yoloModeEnabled) {
 				switchElement.classList.add('active');
 			} else {
 				switchElement.classList.remove('active');
 			}
-			
+
 			// Update the yolo warning visibility
 			updateYoloWarning();
-			
+
 			// Update settings to save the state
 			updateSettings();
 		}
+
 
 
 		let totalCost = 0;
@@ -1719,6 +1720,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			const displayNames = {
 				'opus': 'Opus',
 				'sonnet': 'Sonnet',
+				'sonnet1m': 'Sonnet 1M',
 				'default': 'Model'
 			};
 			document.getElementById('selectedModel').textContent = displayNames[model] || model;
@@ -1748,6 +1750,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		const displayNames = {
 			'opus': 'Opus',
 			'sonnet': 'Sonnet',
+			'sonnet1m': 'Sonnet 1M',
 			'default': 'Default'
 		};
 		document.getElementById('selectedModel').textContent = displayNames[currentModel];

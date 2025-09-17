@@ -497,7 +497,12 @@ class ClaudeChatProvider {
 
 		// Add model selection if not using default
 		if (this._selectedModel && this._selectedModel !== 'default') {
-			args.push('--model', this._selectedModel);
+			// Map sonnet1m to sonnet[1m] for CLI
+			if (this._selectedModel === 'sonnet1m') {
+				args.push('--model', 'sonnet[1m]');
+			} else {
+				args.push('--model', this._selectedModel);
+			}
 		}
 
 		// Add session resume if we have a current session
@@ -514,6 +519,13 @@ class ClaudeChatProvider {
 		const nodePath = config.get<string>('wsl.nodePath', '/usr/bin/node');
 		const claudePath = config.get<string>('wsl.claudePath', '/usr/local/bin/claude');
 
+		// Prepare environment variables
+		const baseEnv: Record<string, string | undefined> = {
+			...process.env,
+			FORCE_COLOR: '0',
+			NO_COLOR: '1'
+		};
+
 		let claudeProcess: cp.ChildProcess;
 
 		if (wslEnabled) {
@@ -524,11 +536,7 @@ class ClaudeChatProvider {
 			claudeProcess = cp.spawn('wsl', ['-d', wslDistro, 'bash', '-ic', wslCommand], {
 				cwd: cwd,
 				stdio: ['pipe', 'pipe', 'pipe'],
-				env: {
-					...process.env,
-					FORCE_COLOR: '0',
-					NO_COLOR: '1'
-				}
+				env: baseEnv
 			});
 		} else {
 			// Use native claude command
@@ -537,11 +545,7 @@ class ClaudeChatProvider {
 				shell: process.platform === 'win32',
 				cwd: cwd,
 				stdio: ['pipe', 'pipe', 'pipe'],
-				env: {
-					...process.env,
-					FORCE_COLOR: '0',
-					NO_COLOR: '1'
-				}
+				env: baseEnv
 			});
 		}
 
@@ -2233,7 +2237,7 @@ class ClaudeChatProvider {
 
 	private _setSelectedModel(model: string): void {
 		// Validate model name to prevent issues mentioned in the GitHub issue
-		const validModels = ['opus', 'sonnet', 'default'];
+		const validModels = ['opus', 'sonnet', 'sonnet1m', 'default'];
 		if (validModels.includes(model)) {
 			this._selectedModel = model;
 			console.log('Model selected:', model);

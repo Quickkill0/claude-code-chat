@@ -5,7 +5,12 @@
       "Bash(grep:*)",
       "Bash(sed:*)",
       "Bash(rg:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__read_text_file",
+      "mcp__filesystem__read_multiple_files",
+      "mcp__filesystem__create_directory",
+      "mcp__filesystem__write_file"
     ],
     "deny": []
   },
