@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as cp from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(cp.exec);
 
 /**
  * Manages MCP server configuration and VS Code settings
@@ -342,5 +346,267 @@ export class ConfigManager {
 	 */
 	async dismissWSLAlert(): Promise<void> {
 		await this._context.globalState.update('wslAlertDismissed', true);
+	}
+
+	// ========================================================================================
+	// Claude Code MCP Command Integration
+	// ========================================================================================
+
+	/**
+	 * Executes a Claude MCP command with proper WSL support
+	 */
+	private async executeClaudeMCPCommand(args: string[]): Promise<string> {
+		try {
+			const config = vscode.workspace.getConfiguration('claudeCodeChat');
+			const wslEnabled = config.get<boolean>('wsl.enabled', false);
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+			const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
+
+			let command: string;
+			let execOptions: any = { cwd };
+
+			if (wslEnabled) {
+				// WSL command execution
+				const distro = config.get<string>('wsl.distro', 'Ubuntu');
+				const claudePath = config.get<string>('wsl.claudePath', '/usr/local/bin/claude');
+				const wslCwd = this.convertToWSLPath(cwd);
+
+				command = `wsl -d ${distro} bash -c "cd ${wslCwd} && ${claudePath} ${args.join(' ')}"`;
+			} else {
+				// Native command execution
+				command = `claude ${args.join(' ')}`;
+			}
+
+			console.log('Executing Claude MCP command:', command);
+			const { stdout, stderr } = await execAsync(command, execOptions);
+
+			if (stderr && !stderr.includes('✓')) {
+				console.warn('Claude MCP command stderr:', stderr);
+			}
+
+			return stdout.toString().trim();
+		} catch (error: any) {
+			console.error('Claude MCP command failed:', error);
+			if (error.message.includes('ENOENT') || error.message.includes('command not found')) {
+				throw new Error('Claude Code CLI not found. Please install Claude Code first: https://www.anthropic.com/claude-code');
+			}
+			throw new Error(`Claude MCP command failed: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Lists MCP servers using Claude Code CLI
+	 */
+	async listMCPServersViaCLI(): Promise<any> {
+		try {
+			const output = await this.executeClaudeMCPCommand(['mcp', 'list']);
+			// Parse the CLI output to extract server information
+			// Claude MCP list outputs servers in a structured format
+			const servers: any = {};
+			const lines = output.split('\n').filter(line => line.trim());
+
+			for (const line of lines) {
+				// Skip header lines, empty lines, and "No servers" messages
+				if (line.includes('MCP Servers') ||
+					line.includes('---') ||
+					!line.trim() ||
+					line.includes('No MCP servers') ||
+					line.includes('No servers configured') ||
+					line.startsWith('No ') ||
+					line.includes('Checking')) {
+					continue;
+				}
+
+				// Parse server entries (format may vary, this is a basic parser)
+				const parts = line.trim().split(/\s+/);
+				if (parts.length >= 2) {
+					// Remove trailing colon from server name if present
+					const serverName = parts[0].replace(/:$/, '');
+
+					// Skip if this looks like part of a status message
+					if (serverName === 'No' ||
+						serverName === 'servers' ||
+						serverName === 'configured' ||
+						serverName === 'Checking' ||
+						serverName.length < 2) {
+						continue;
+					}
+
+					const scope = parts[1] || 'local';
+					const status = parts[2] || 'unknown';
+
+
+					servers[serverName] = {
+						name: serverName,
+						scope: scope,
+						status: status,
+						managedByCLI: true
+					};
+				}
+			}
+
+			return servers;
+		} catch (error) {
+			console.error('Error listing MCP servers via CLI:', error);
+			// Fallback to JSON config if CLI fails
+			return await this.loadMCPServers();
+		}
+	}
+
+	/**
+	 * Adds an MCP server using Claude Code CLI
+	 */
+	async addMCPServerViaCLI(name: string, serverConfig: any, scope: string = 'local'): Promise<void> {
+		try {
+			const args = ['mcp', 'add', name, '--scope', scope];
+
+			// Add server-specific configuration based on type
+			if (serverConfig.type === 'stdio') {
+				args.push('--');
+				args.push(serverConfig.command);
+				if (serverConfig.args) {
+					args.push(...serverConfig.args);
+				}
+			} else if (serverConfig.type === 'http' || serverConfig.type === 'sse') {
+				// Use the correct --transport syntax for HTTP/SSE servers
+				args.splice(2, 0, '--transport', serverConfig.type); // Insert after 'add'
+				args.push(serverConfig.url);
+				if (serverConfig.headers) {
+					for (const [key, value] of Object.entries(serverConfig.headers)) {
+						args.push('--header', `${key}:${value}`);
+					}
+				}
+			}
+
+			// Set environment variables if provided
+			if (serverConfig.env) {
+				for (const [key, value] of Object.entries(serverConfig.env)) {
+					args.push('--env', `${key}=${value}`);
+				}
+			}
+
+			const output = await this.executeClaudeMCPCommand(args);
+			console.log(`Added MCP server via CLI: ${name}`, output);
+
+		} catch (error) {
+			console.error('Error adding MCP server via CLI:', error);
+			// Fallback to JSON config if CLI fails
+			await this.saveMCPServer(name, serverConfig);
+			throw error;
+		}
+	}
+
+	/**
+	 * Removes an MCP server using Claude Code CLI
+	 */
+	async removeMCPServerViaCLI(name: string): Promise<void> {
+		try {
+			const output = await this.executeClaudeMCPCommand(['mcp', 'remove', name]);
+			console.log(`Removed MCP server via CLI: ${name}`, output);
+
+		} catch (error) {
+			console.error('Error removing MCP server via CLI:', error);
+			// Fallback to JSON config if CLI fails
+			await this.deleteMCPServer(name);
+			throw error;
+		}
+	}
+
+	/**
+	 * Tests an MCP server connection using Claude Code CLI
+	 */
+	async testMCPServerViaCLI(name: string): Promise<boolean> {
+		try {
+			const output = await this.executeClaudeMCPCommand(['mcp', 'get', name]);
+			return output.includes('✓') || output.includes('success') || !output.includes('error');
+		} catch (error) {
+			console.error('Error testing MCP server via CLI:', error);
+			return false;
+		}
+	}
+
+	/**
+	 * Enhanced MCP server loading that combines CLI and JSON config
+	 */
+	async loadEnhancedMCPServers(): Promise<any> {
+		try {
+			// Try to get servers from Claude CLI first
+			const cliServers = await this.listMCPServersViaCLI();
+
+			// Also get servers from JSON config (for legacy support)
+			const jsonServers = await this.loadMCPServers();
+
+			// Merge both sources, CLI takes precedence
+			const mergedServers = { ...jsonServers };
+
+			for (const [name, server] of Object.entries(cliServers)) {
+				mergedServers[name] = {
+					...(mergedServers[name] || {}),
+					...(server as any),
+					managedByCLI: true
+				};
+			}
+
+			return mergedServers;
+		} catch (error) {
+			console.error('Error loading enhanced MCP servers:', error);
+			// Fallback to JSON config only
+			return await this.loadMCPServers();
+		}
+	}
+
+	/**
+	 * Unified method to add MCP server (tries CLI first, falls back to JSON)
+	 */
+	async addMCPServerUnified(name: string, serverConfig: any, scope: string = 'local'): Promise<void> {
+		try {
+			// Try Claude CLI first
+			await this.addMCPServerViaCLI(name, serverConfig, scope);
+		} catch (error) {
+			console.warn('Claude CLI add failed, falling back to JSON config:', error);
+			// Fallback to JSON config
+			await this.saveMCPServer(name, serverConfig);
+		}
+	}
+
+	/**
+	 * Unified method to remove MCP server (tries CLI first, falls back to JSON)
+	 */
+	async removeMCPServerUnified(name: string): Promise<void> {
+		let cliError: Error | null = null;
+		let jsonError: Error | null = null;
+
+		try {
+			// Try Claude CLI first
+			await this.removeMCPServerViaCLI(name);
+			return; // Success, no need to try JSON
+		} catch (error) {
+			cliError = error as Error;
+			console.warn('Claude CLI remove failed, falling back to JSON config:', error);
+		}
+
+		try {
+			// Fallback to JSON config
+			await this.deleteMCPServer(name);
+		} catch (error) {
+			jsonError = error as Error;
+			console.warn('JSON config remove also failed:', error);
+		}
+
+		// If both failed, check if it's because the server doesn't exist
+		if (cliError && jsonError) {
+			const notFoundMessages = ['not found', 'No MCP server found'];
+			const isNotFound = notFoundMessages.some(msg =>
+				cliError!.message.includes(msg) || jsonError!.message.includes(msg)
+			);
+
+			if (isNotFound) {
+				console.log(`Server '${name}' was not found in CLI or JSON config - it may have already been removed`);
+				return; // Don't throw error for servers that don't exist
+			}
+
+			// Re-throw the CLI error if it's a different kind of error
+			throw cliError;
+		}
 	}
 }

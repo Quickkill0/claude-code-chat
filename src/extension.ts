@@ -292,10 +292,13 @@ class ClaudeChatProvider {
 				this._loadMCPServers();
 				return;
 			case 'saveMCPServer':
-				this._saveMCPServer(message.name, message.config);
+				this._saveMCPServer(message.name, message.config, message.scope);
 				return;
 			case 'deleteMCPServer':
 				this._deleteMCPServer(message.name);
+				return;
+			case 'testMCPServer':
+				this._testMCPServer(message.name);
 				return;
 			case 'getCustomSnippets':
 				this._sendCustomSnippets();
@@ -1006,7 +1009,8 @@ class ClaudeChatProvider {
 
 	private async _loadMCPServers(): Promise<void> {
 		try {
-			const servers = await this._configManager.loadMCPServers();
+			// Use enhanced loading that combines CLI and JSON config
+			const servers = await this._configManager.loadEnhancedMCPServers();
 			this._postMessage({ type: 'mcpServers', data: servers });
 		} catch (error) {
 			console.error('Error loading MCP servers:', error);
@@ -1014,9 +1018,10 @@ class ClaudeChatProvider {
 		}
 	}
 
-	private async _saveMCPServer(name: string, config: any): Promise<void> {
+	private async _saveMCPServer(name: string, config: any, scope: string = 'local'): Promise<void> {
 		try {
-			await this._configManager.saveMCPServer(name, config);
+			// Use unified method that tries CLI first, falls back to JSON
+			await this._configManager.addMCPServerUnified(name, config, scope);
 			this._postMessage({ type: 'mcpServerSaved', data: { name } });
 		} catch (error) {
 			console.error('Error saving MCP server:', error);
@@ -1026,11 +1031,36 @@ class ClaudeChatProvider {
 
 	private async _deleteMCPServer(name: string): Promise<void> {
 		try {
-			await this._configManager.deleteMCPServer(name);
+			// Use unified method that tries CLI first, falls back to JSON
+			await this._configManager.removeMCPServerUnified(name);
 			this._postMessage({ type: 'mcpServerDeleted', data: { name } });
 		} catch (error) {
 			console.error('Error deleting MCP server:', error);
 			this._postMessage({ type: 'mcpServerError', data: { error: 'Failed to delete MCP server' } });
+		}
+	}
+
+	private async _testMCPServer(name: string): Promise<void> {
+		try {
+			const isWorking = await this._configManager.testMCPServerViaCLI(name);
+			this._postMessage({
+				type: 'mcpServerTested',
+				data: {
+					name,
+					status: isWorking ? 'success' : 'failed',
+					message: isWorking ? 'Server is working correctly' : 'Server test failed'
+				}
+			});
+		} catch (error: any) {
+			console.error('Error testing MCP server:', error);
+			this._postMessage({
+				type: 'mcpServerTested',
+				data: {
+					name,
+					status: 'error',
+					message: `Test failed: ${error?.message || 'Unknown error'}`
+				}
+			});
 		}
 	}
 

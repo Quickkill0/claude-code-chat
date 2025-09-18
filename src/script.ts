@@ -17,6 +17,12 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		let thinkingModeEnabled = false;
 		let yoloModeEnabled = false;
 
+		// MCP Server Management Variables
+		let mcpServersData = [];
+		let currentMCPScope = 'all';
+		let mcpSearchQuery = '';
+		let mcpInstallingServers = new Set();
+
 		function shouldAutoScroll(messagesDiv) {
 			const threshold = 100; // pixels from bottom
 			const scrollTop = messagesDiv.scrollTop;
@@ -1056,8 +1062,14 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		// Tools modal functions
 		function showMCPModal() {
 			document.getElementById('mcpModal').style.display = 'flex';
-			// Load existing MCP servers
-			loadMCPServers();
+			// Reset to default state
+			currentMCPScope = 'all';
+			mcpSearchQuery = '';
+			mcpServersData = [];
+
+			// Update UI and load servers
+			updateMCPScopeUI();
+			loadEnhancedMCPServers();
 		}
 		
 		function updateYoloWarning() {
@@ -1113,7 +1125,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 
 		function hideMCPModal() {
 			document.getElementById('mcpModal').style.display = 'none';
-			hideAddServerForm();
+			hideCustomMCPModal();
 		}
 
 		// Close MCP modal when clicking outside
@@ -1418,6 +1430,713 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				serversList.appendChild(serverItem);
 			}
 		}
+
+		// Enhanced MCP Server Management Functions
+		function loadEnhancedMCPServers() {
+			showMCPLoading(true);
+			vscode.postMessage({ type: 'loadMCPServers' });
+		}
+
+		function switchMCPScope(scope) {
+			currentMCPScope = scope;
+			updateMCPScopeUI();
+			displayFilteredMCPServers();
+		}
+
+		function updateMCPScopeUI() {
+			// Update tab buttons
+			document.querySelectorAll('.mcp-scope-tab').forEach(tab => {
+				tab.classList.remove('active');
+				if (tab.dataset.scope === currentMCPScope) {
+					tab.classList.add('active');
+				}
+			});
+
+			// Update description
+			const descriptions = {
+				all: 'Browse and manage all MCP servers',
+				installed: 'View and manage installed servers',
+				available: 'Discover and install new servers'
+			};
+			const descElement = document.getElementById('mcpScopeDescription');
+			if (descElement) {
+				descElement.textContent = descriptions[currentMCPScope] || descriptions.all;
+			}
+		}
+
+		function filterMCPServers() {
+			mcpSearchQuery = document.getElementById('mcpSearchInput').value.toLowerCase();
+			displayFilteredMCPServers();
+		}
+
+		function displayFilteredMCPServers() {
+			const serverList = document.getElementById('mcpServerList');
+			const emptyState = document.getElementById('mcpEmptyState');
+			const statsText = document.getElementById('mcpStatsText');
+
+			let filteredServers = mcpServersData.filter(server => {
+				// Apply scope filter
+				let scopeMatch = true;
+				if (currentMCPScope === 'installed') {
+					scopeMatch = server.installed;
+				} else if (currentMCPScope === 'available') {
+					scopeMatch = !server.installed;
+				}
+
+				// Apply search filter
+				let searchMatch = true;
+				if (mcpSearchQuery) {
+					searchMatch = server.name.toLowerCase().includes(mcpSearchQuery) ||
+							  server.description.toLowerCase().includes(mcpSearchQuery) ||
+							  (server.category && server.category.toLowerCase().includes(mcpSearchQuery));
+				}
+
+				return scopeMatch && searchMatch;
+			});
+
+			// Update stats
+			if (statsText) {
+				statsText.textContent = \`\${filteredServers.length} server\${filteredServers.length !== 1 ? 's' : ''}\`;
+			}
+
+			if (filteredServers.length === 0) {
+				serverList.style.display = 'none';
+				emptyState.style.display = 'flex';
+			} else {
+				serverList.style.display = 'block';
+				emptyState.style.display = 'none';
+				serverList.innerHTML = filteredServers.map(server => createMCPServerCard(server)).join('');
+			}
+		}
+
+		function createMCPServerCard(server) {
+			const isInstalling = mcpInstallingServers.has(server.name);
+			const statusClass = isInstalling ? 'installing' : (server.installed ? 'installed' : 'available');
+			const statusText = isInstalling ? 'Installing...' : (server.installed ? 'Installed' : 'Available');
+
+			return \`
+				<div class="mcp-server-card \${statusClass}" data-server="\${server.name}">
+					<div class="mcp-server-icon">\${server.icon}</div>
+					<div class="mcp-server-details">
+						<div class="mcp-server-header">
+							<div class="mcp-server-name">\${server.name}</div>
+							<div class="mcp-server-status \${statusClass}">\${statusText}</div>
+						</div>
+						<div class="mcp-server-description">\${server.description}</div>
+						<div class="mcp-server-meta">
+							<span>Type: \${server.type}</span>
+							\${server.category ? \`<span>Category: \${server.category}</span>\` : ''}
+							\${server.scope ? \`<span>Scope: \${server.scope}</span>\` : ''}
+						</div>
+						\${isInstalling ? '<div class="install-progress"><div class="install-progress-bar" style="width: 50%;"></div></div>' : ''}
+					</div>
+					<div class="mcp-server-actions">
+						\${server.installed ?
+							\`<button class="mcp-action-btn" onclick="testMCPServer('\${server.name}')">Test</button>
+							 <button class="mcp-action-btn danger" onclick="uninstallMCPServer('\${server.name}')">Remove</button>\` :
+							\`<div class="mcp-install-section">
+								<div class="mcp-scope-selector">
+									<label for="scope-\${server.name}">Scope:</label>
+									<select id="scope-\${server.name}" class="mcp-scope-dropdown">
+										<option value="local" \${server.defaultScope === 'local' ? 'selected' : ''}>Local</option>
+										<option value="project" \${server.defaultScope === 'project' ? 'selected' : ''}>Project</option>
+										<option value="user" \${server.defaultScope === 'user' ? 'selected' : ''}>User</option>
+									</select>
+								</div>
+								<div class="mcp-install-buttons">
+									<button class="mcp-action-btn primary" onclick="installMCPServer('\${server.name}')" \${isInstalling ? 'disabled' : ''}>Install</button>
+									\${(server.type === 'http' || server.type === 'sse') ?
+										\`<button class="mcp-action-btn secondary" onclick="installMCPServerWithKey('\${server.name}')" \${isInstalling ? 'disabled' : ''}>Add with Key</button>\` :
+										''
+									}
+								</div>
+							</div>\`
+						}
+					</div>
+				</div>
+			\`;
+		}
+
+		function installMCPServer(name) {
+			const server = mcpServersData.find(s => s.name === name);
+			if (!server) return;
+
+			// Get selected scope from dropdown
+			const scopeSelect = document.getElementById('scope-' + name);
+			const selectedScope = scopeSelect ? scopeSelect.value : (server.defaultScope || 'local');
+
+			mcpInstallingServers.add(name);
+			displayFilteredMCPServers();
+
+			vscode.postMessage({
+				type: 'saveMCPServer',
+				name: name,
+				config: server.config,
+				scope: selectedScope
+			});
+		}
+
+		function installMCPServerWithKey(name) {
+			const server = mcpServersData.find(s => s.name === name);
+			if (!server) return;
+
+			// Get selected scope from dropdown
+			const scopeSelect = document.getElementById('scope-' + name);
+			const selectedScope = scopeSelect ? scopeSelect.value : (server.defaultScope || 'local');
+
+			// Show API key input modal
+			showAPIKeyModal(name, server, selectedScope);
+		}
+
+		function uninstallMCPServer(name) {
+			vscode.postMessage({
+				type: 'deleteMCPServer',
+				name: name
+			});
+		}
+
+		function testMCPServer(name) {
+			vscode.postMessage({
+				type: 'testMCPServer',
+				name: name
+			});
+		}
+
+		function refreshMCPServers() {
+			loadEnhancedMCPServers();
+		}
+
+		// Make MCP functions globally accessible for onclick handlers
+		window.installMCPServer = installMCPServer;
+		window.installMCPServerWithKey = installMCPServerWithKey;
+		window.uninstallMCPServer = uninstallMCPServer;
+		window.testMCPServer = testMCPServer;
+		window.refreshMCPServers = refreshMCPServers;
+		window.showCustomMCPForm = showCustomMCPForm;
+		window.showAPIKeyModal = showAPIKeyModal;
+		window.hideAPIKeyModal = hideAPIKeyModal;
+		window.installMCPServerWithAPIKey = installMCPServerWithAPIKey;
+		// Legacy function for backward compatibility
+		window.deleteMCPServer = uninstallMCPServer;
+
+		function showCustomMCPForm() {
+			document.getElementById('mcpCustomModal').style.display = 'flex';
+			clearCustomMCPForm();
+		}
+
+		function hideCustomMCPModal() {
+			document.getElementById('mcpCustomModal').style.display = 'none';
+		}
+
+		function showAPIKeyModal(serverName, server, scope) {
+			// Create API key modal overlay within the MCP modal if it doesn't exist
+			if (!document.getElementById('mcpAPIKeyModal')) {
+				const mcpModal = document.querySelector('.mcp-modal-content');
+				if (!mcpModal) return;
+
+				const overlay = document.createElement('div');
+				overlay.id = 'mcpAPIKeyModal';
+				overlay.className = 'mcp-api-key-overlay';
+				overlay.innerHTML = \`
+					<div class="mcp-api-key-modal">
+						<div class="mcp-api-key-header">
+							<h4>Add API Key for <span id="apiKeyServerName"></span></h4>
+							<button class="mcp-modal-close" onclick="hideAPIKeyModal()">&times;</button>
+						</div>
+						<div class="mcp-api-key-body">
+							<div class="form-group">
+								<label for="apiKeyInput">API Key:</label>
+								<input type="password" id="apiKeyInput" placeholder="Enter your API key" class="form-input">
+								<small class="form-help">This key will be securely stored in your MCP configuration</small>
+							</div>
+							<div class="form-group">
+								<label for="apiKeyName">Environment Variable Name:</label>
+								<input type="text" id="apiKeyName" placeholder="e.g., API_KEY, OPENAI_API_KEY" class="form-input">
+								<small class="form-help">The environment variable name to store the API key</small>
+							</div>
+						</div>
+						<div class="mcp-api-key-footer">
+							<button class="mcp-action-btn secondary" onclick="hideAPIKeyModal()">Cancel</button>
+							<button class="mcp-action-btn primary" onclick="installMCPServerWithAPIKey()">Install with Key</button>
+						</div>
+					</div>
+				\`;
+				mcpModal.appendChild(overlay);
+			}
+
+			// Set current server info
+			document.getElementById('apiKeyServerName').textContent = serverName;
+			document.getElementById('apiKeyInput').value = '';
+
+			// Set default API key name based on server
+			const defaultKeyNames = {
+				'openai': 'OPENAI_API_KEY',
+				'anthropic': 'ANTHROPIC_API_KEY',
+				'github': 'GITHUB_TOKEN',
+				'notion': 'NOTION_API_KEY',
+				'slack': 'SLACK_BOT_TOKEN',
+				'gmail': 'GMAIL_API_KEY',
+				'gdrive': 'GOOGLE_API_KEY',
+				'brave-search': 'BRAVE_SEARCH_API_KEY',
+				'alpaca': 'ALPACA_API_KEY',
+				'context7': 'CONTEXT7_API_KEY',
+				'everart': 'EVERART_API_KEY',
+				'mongodb': 'MONGODB_URI',
+				'postgres': 'DATABASE_URL',
+				'sqlite': 'SQLITE_DB_PATH',
+				'qdrant': 'QDRANT_API_KEY',
+				'bigquery': 'GOOGLE_APPLICATION_CREDENTIALS',
+				'aws-bedrock': 'AWS_ACCESS_KEY_ID'
+			};
+			document.getElementById('apiKeyName').value = defaultKeyNames[serverName] || 'API_KEY';
+
+			// Store current context
+			window.currentAPIKeyContext = { serverName, server, scope };
+
+			// Show modal
+			document.getElementById('mcpAPIKeyModal').style.display = 'flex';
+		}
+
+		function hideAPIKeyModal() {
+			const modal = document.getElementById('mcpAPIKeyModal');
+			if (modal) {
+				modal.remove();
+			}
+			window.currentAPIKeyContext = null;
+		}
+
+		function installMCPServerWithAPIKey() {
+			const context = window.currentAPIKeyContext;
+			if (!context) return;
+
+			const apiKey = document.getElementById('apiKeyInput').value.trim();
+			const keyName = document.getElementById('apiKeyName').value.trim();
+
+			if (!apiKey) {
+				showNotification('Please enter an API key', 'error');
+				return;
+			}
+
+			if (!keyName) {
+				showNotification('Please enter an environment variable name', 'error');
+				return;
+			}
+
+			// Clone the server config and add the API key
+			const configWithKey = { ...context.server.config };
+			if (!configWithKey.env) {
+				configWithKey.env = {};
+			}
+			configWithKey.env[keyName] = apiKey;
+
+			mcpInstallingServers.add(context.serverName);
+			displayFilteredMCPServers();
+
+			vscode.postMessage({
+				type: 'saveMCPServer',
+				name: context.serverName,
+				config: configWithKey,
+				scope: context.scope
+			});
+
+			hideAPIKeyModal();
+		}
+
+		function updateCustomServerForm() {
+			const serverType = document.getElementById('customServerType').value;
+			const commandGroup = document.getElementById('customCommandGroup');
+			const urlGroup = document.getElementById('customUrlGroup');
+			const argsGroup = document.getElementById('customArgsGroup');
+			const envGroup = document.getElementById('customEnvGroup');
+			const headersGroup = document.getElementById('customHeadersGroup');
+
+			if (serverType === 'stdio') {
+				commandGroup.style.display = 'block';
+				urlGroup.style.display = 'none';
+				argsGroup.style.display = 'block';
+				envGroup.style.display = 'block';
+				headersGroup.style.display = 'none';
+			} else {
+				commandGroup.style.display = 'none';
+				urlGroup.style.display = 'block';
+				argsGroup.style.display = 'none';
+				envGroup.style.display = 'none';
+				headersGroup.style.display = 'block';
+			}
+		}
+
+		function clearCustomMCPForm() {
+			document.getElementById('customServerName').value = '';
+			document.getElementById('customServerScope').value = 'local';
+			document.getElementById('customServerType').value = 'stdio';
+			document.getElementById('customServerCommand').value = 'npx';
+			document.getElementById('customServerUrl').value = '';
+			document.getElementById('customServerArgs').value = '';
+			document.getElementById('customServerEnv').value = '';
+			document.getElementById('customServerHeaders').value = '';
+			updateCustomServerForm();
+		}
+
+		function saveCustomMCPServer() {
+			const name = document.getElementById('customServerName').value.trim();
+			const scope = document.getElementById('customServerScope').value;
+			const type = document.getElementById('customServerType').value;
+
+			if (!name) {
+				showNotification('Server name is required', 'error');
+				return;
+			}
+
+			const serverConfig = { type };
+
+			if (type === 'stdio') {
+				const command = document.getElementById('customServerCommand').value.trim();
+				if (!command) {
+					showNotification('Command is required for stdio servers', 'error');
+					return;
+				}
+				serverConfig.command = command;
+
+				const argsText = document.getElementById('customServerArgs').value.trim();
+				if (argsText) {
+					serverConfig.args = argsText.split('\\n').filter(line => line.trim());
+				}
+
+				const envText = document.getElementById('customServerEnv').value.trim();
+				if (envText) {
+					serverConfig.env = {};
+					envText.split('\\n').forEach(line => {
+						const [key, ...valueParts] = line.split('=');
+						if (key && valueParts.length > 0) {
+							serverConfig.env[key.trim()] = valueParts.join('=').trim();
+						}
+					});
+				}
+			} else {
+				const url = document.getElementById('customServerUrl').value.trim();
+				if (!url) {
+					showNotification('URL is required for HTTP/SSE servers', 'error');
+					return;
+				}
+				serverConfig.url = url;
+
+				const headersText = document.getElementById('customServerHeaders').value.trim();
+				if (headersText) {
+					serverConfig.headers = {};
+					headersText.split('\\n').forEach(line => {
+						const [key, ...valueParts] = line.split('=');
+						if (key && valueParts.length > 0) {
+							serverConfig.headers[key.trim()] = valueParts.join('=').trim();
+						}
+					});
+				}
+			}
+
+			vscode.postMessage({
+				type: 'saveMCPServer',
+				name: name,
+				config: serverConfig,
+				scope: scope
+			});
+
+			hideCustomMCPModal();
+		}
+
+		function showMCPLoading(show) {
+			const loading = document.getElementById('mcpLoading');
+			const serverList = document.getElementById('mcpServerList');
+			const emptyState = document.getElementById('mcpEmptyState');
+
+			if (show) {
+				loading.style.display = 'flex';
+				serverList.style.display = 'none';
+				emptyState.style.display = 'none';
+			} else {
+				loading.style.display = 'none';
+			}
+		}
+
+		function showNotification(message, type = 'info') {
+			const notification = document.createElement('div');
+			notification.textContent = message;
+			notification.style.cssText = \`
+				position: fixed; top: 20px; right: 20px; z-index: 9999;
+				padding: 12px 16px; border-radius: 6px; font-size: 13px;
+				background: \${type === 'error' ? 'var(--vscode-inputValidation-errorBackground)' : 'var(--vscode-notificationToast-border)'};
+				color: \${type === 'error' ? 'var(--vscode-inputValidation-errorForeground)' : 'var(--vscode-foreground)'};
+				border: 1px solid \${type === 'error' ? 'var(--vscode-inputValidation-errorBorder)' : 'var(--vscode-notificationToast-border)'};
+				box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+			\`;
+			document.body.appendChild(notification);
+			setTimeout(() => notification.remove(), 3000);
+		}
+
+		function displayEnhancedMCPServers(data) {
+			mcpServersData = data || [];
+			showMCPLoading(false);
+			displayFilteredMCPServers();
+		}
+
+		function createEnhancedMCPServerData(installedServers = {}) {
+			// Define curated available servers with metadata
+			const availableServers = [
+				{
+					name: 'context7',
+					icon: '📚',
+					description: 'Up-to-date code documentation for any library or framework',
+					category: 'Documentation',
+					type: 'http',
+					config: { type: 'http', url: 'https://context7.liam.sh/mcp' },
+					defaultScope: 'user'
+				},
+				{
+					name: 'sequential-thinking',
+					icon: '🔗',
+					description: 'Step-by-step reasoning and problem-solving capabilities',
+					category: 'AI Tools',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] },
+					defaultScope: 'local'
+				},
+				{
+					name: 'memory',
+					icon: '🧠',
+					description: 'Persistent knowledge graph storage and retrieval',
+					category: 'Data Storage',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
+					defaultScope: 'local'
+				},
+				{
+					name: 'fetch',
+					icon: '🌐',
+					description: 'HTTP requests, web scraping, and content fetching',
+					category: 'Web Tools',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-fetch'] },
+					defaultScope: 'local'
+				},
+				{
+					name: 'filesystem',
+					icon: '📁',
+					description: 'Secure file operations and directory management',
+					category: 'System Tools',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
+					defaultScope: 'local'
+				},
+				{
+					name: 'puppeteer',
+					icon: '🎭',
+					description: 'Browser automation and web page interaction',
+					category: 'Automation',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-puppeteer'] },
+					defaultScope: 'local'
+				},
+				{
+					name: 'github',
+					icon: '🐙',
+					description: 'GitHub repository management and API integration',
+					category: 'Development',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] },
+					defaultScope: 'user'
+				},
+				{
+					name: 'alpaca',
+					icon: '📈',
+					description: 'Stock trading and market data through Alpaca API',
+					category: 'Finance',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-alpaca'] },
+					defaultScope: 'user'
+				},
+				{
+					name: 'mongodb',
+					icon: '🍃',
+					description: 'MongoDB database queries and collection analysis',
+					category: 'Database',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-mongodb'] },
+					defaultScope: 'project'
+				},
+				{
+					name: 'qdrant',
+					icon: '🔍',
+					description: 'Vector search and similarity matching with Qdrant',
+					category: 'AI/ML',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-qdrant'] },
+					defaultScope: 'project'
+				},
+				{
+					name: 'bigquery',
+					icon: '🔢',
+					description: 'Google BigQuery data warehouse queries and analysis',
+					category: 'Database',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-bigquery'] },
+					defaultScope: 'user'
+				},
+				{
+					name: 'aws-bedrock',
+					icon: '☁️',
+					description: 'AWS Bedrock knowledge base retrieval and AI services',
+					category: 'AI/ML',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-aws-bedrock'] },
+					defaultScope: 'user'
+				},
+				{
+					name: 'browserloop',
+					icon: '📸',
+					description: 'Take screenshots and monitor console logs of web pages',
+					category: 'Automation',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', 'browserloop@latest'] },
+					defaultScope: 'local'
+				},
+				{
+					name: 'playwright',
+					icon: '🎬',
+					description: 'Advanced browser automation and web testing',
+					category: 'Automation',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@executeautomation/playwright-mcp-server'] },
+					defaultScope: 'local'
+				},
+				{
+					name: 'git',
+					icon: '🌳',
+					description: 'Git repository management, commits, and version control',
+					category: 'Development',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-git'] },
+					defaultScope: 'project'
+				},
+				{
+					name: 'slack',
+					icon: '💬',
+					description: 'Slack workspace integration and message management',
+					category: 'Communication',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-slack'] },
+					defaultScope: 'user'
+				},
+				{
+					name: 'sqlite',
+					icon: '🗃️',
+					description: 'SQLite database queries and schema management',
+					category: 'Database',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-sqlite'] },
+					defaultScope: 'project'
+				},
+				{
+					name: 'postgres',
+					icon: '🐘',
+					description: 'PostgreSQL database operations and analytics',
+					category: 'Database',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-postgres'] },
+					defaultScope: 'project'
+				},
+				{
+					name: 'gdrive',
+					icon: '☁️',
+					description: 'Google Drive file management and sharing',
+					category: 'Cloud Storage',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-gdrive'] },
+					defaultScope: 'user'
+				},
+				{
+					name: 'gmail',
+					icon: '📧',
+					description: 'Gmail email management and automation',
+					category: 'Communication',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-gmail'] },
+					defaultScope: 'user'
+				},
+				{
+					name: 'notion',
+					icon: '📝',
+					description: 'Notion workspace management and content creation',
+					category: 'Productivity',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-notion'] },
+					defaultScope: 'user'
+				},
+				{
+					name: 'brave-search',
+					icon: '🔍',
+					description: 'Brave Search API for web search and results',
+					category: 'Web Tools',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-brave-search'] },
+					defaultScope: 'user'
+				},
+				{
+					name: 'everart',
+					icon: '🎨',
+					description: 'AI image generation and art creation tools',
+					category: 'AI/ML',
+					type: 'stdio',
+					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-everart'] },
+					defaultScope: 'user'
+				}
+			];
+
+			// Mark servers as installed if they exist in the installed list
+			const enhancedServers = availableServers.map(server => ({
+				...server,
+				installed: installedServers.hasOwnProperty(server.name),
+				scope: installedServers[server.name]?.scope || server.defaultScope
+			}));
+
+			// Add any custom installed servers that aren't in our curated list
+			for (const [name, config] of Object.entries(installedServers)) {
+				if (!enhancedServers.find(s => s.name === name)) {
+					enhancedServers.push({
+						name,
+						icon: '⚙️',
+						description: 'Custom MCP server',
+						category: 'Custom',
+						type: config.type || 'stdio',
+						config,
+						installed: true,
+						scope: config.scope || 'local',
+						defaultScope: 'local'
+					});
+				}
+			}
+
+			return enhancedServers;
+		}
+
+		// Enhanced event listeners for MCP modals
+		document.addEventListener('DOMContentLoaded', function() {
+			const mcpModal = document.getElementById('mcpModal');
+			const mcpCustomModal = document.getElementById('mcpCustomModal');
+
+			if (mcpModal) {
+				mcpModal.addEventListener('click', (e) => {
+					if (e.target === mcpModal) {
+						hideMCPModal();
+					}
+				});
+			}
+
+			if (mcpCustomModal) {
+				mcpCustomModal.addEventListener('click', (e) => {
+					if (e.target === mcpCustomModal) {
+						hideCustomMCPModal();
+					}
+				});
+			}
+		});
 
 		// Model selector functions
 		let currentModel = 'opus'; // Default model
@@ -2133,18 +2852,28 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					addPermissionRequestMessage(message.data);
 					break;
 				case 'mcpServers':
-					displayMCPServers(message.data);
+					// Convert to enhanced format with combined data
+					const enhancedServers = createEnhancedMCPServerData(message.data);
+					displayEnhancedMCPServers(enhancedServers);
 					break;
 				case 'mcpServerSaved':
-					loadMCPServers(); // Reload the servers list
-					addMessage('✅ MCP server "' + message.data.name + '" saved successfully', 'system');
+					mcpInstallingServers.delete(message.data.name);
+					loadEnhancedMCPServers();
+					showNotification('MCP server "' + message.data.name + '" installed successfully', 'success');
 					break;
 				case 'mcpServerDeleted':
-					loadMCPServers(); // Reload the servers list
-					addMessage('✅ MCP server "' + message.data.name + '" deleted successfully', 'system');
+					loadEnhancedMCPServers();
+					showNotification('MCP server "' + message.data.name + '" removed successfully', 'success');
+					break;
+				case 'mcpServerTested':
+					const statusMessage = message.data.status === 'success' ?
+						'✅ MCP server "' + message.data.name + '" is working correctly' :
+						'❌ MCP server "' + message.data.name + '" test failed: ' + message.data.message;
+					addMessage(statusMessage, message.data.status === 'success' ? 'system' : 'error');
 					break;
 				case 'mcpServerError':
-					addMessage('❌ Error with MCP server: ' + message.data.error, 'error');
+					mcpInstallingServers.delete(message.data.name || 'unknown');
+					showNotification('Error with MCP server: ' + message.data.error, 'error');
 					break;
 			}
 		});

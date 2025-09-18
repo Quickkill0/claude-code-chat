@@ -159,105 +159,116 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 
 	<!-- MCP Servers modal -->
 	<div id="mcpModal" class="tools-modal" style="display: none;">
-		<div class="tools-modal-content">
+		<div class="tools-modal-content mcp-modal-content">
 			<div class="tools-modal-header">
-				<span>MCP Servers</span>
+				<span>MCP Server Manager</span>
 				<button class="tools-close-btn" onclick="hideMCPModal()">✕</button>
 			</div>
-			<div class="tools-list">
-				<div class="mcp-servers-list" id="mcpServersList">
-					<!-- MCP servers will be loaded here -->
+
+			<!-- Search and Controls -->
+			<div class="mcp-controls">
+				<div class="mcp-search-container">
+					<input type="text" id="mcpSearchInput" placeholder="🔍 Search servers..." onkeyup="filterMCPServers()">
 				</div>
-				<div class="mcp-add-server">
-					<button class="btn outlined" onclick="showAddServerForm()" id="addServerBtn">+ Add MCP Server</button>
+				<div class="mcp-scope-tabs">
+					<button class="mcp-scope-tab active" data-scope="all" onclick="switchMCPScope('all')">All Servers</button>
+					<button class="mcp-scope-tab" data-scope="installed" onclick="switchMCPScope('installed')">Installed</button>
+					<button class="mcp-scope-tab" data-scope="available" onclick="switchMCPScope('available')">Available</button>
 				</div>
-				<div class="mcp-popular-servers" id="popularServers">
-					<h4>Popular MCP Servers</h4>
-					<div class="popular-servers-grid">
-						<div class="popular-server-item" onclick="addPopularServer('context7', { type: 'http', url: 'https://context7.liam.sh/mcp' })">
-							<div class="popular-server-icon">📚</div>
-							<div class="popular-server-info">
-								<div class="popular-server-name">Context7</div>
-								<div class="popular-server-desc">Up-to-date Code Docs For Any Prompt</div>
-							</div>
-						</div>
-						<div class="popular-server-item" onclick="addPopularServer('sequential-thinking', { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] })">
-							<div class="popular-server-icon">🔗</div>
-							<div class="popular-server-info">
-								<div class="popular-server-name">Sequential Thinking</div>
-								<div class="popular-server-desc">Step-by-step reasoning capabilities</div>
-							</div>
-						</div>
-						<div class="popular-server-item" onclick="addPopularServer('memory', { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] })">
-							<div class="popular-server-icon">🧠</div>
-							<div class="popular-server-info">
-								<div class="popular-server-name">Memory</div>
-								<div class="popular-server-desc">Knowledge graph storage</div>
-							</div>
-						</div>
-						<div class="popular-server-item" onclick="addPopularServer('puppeteer', { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-puppeteer'] })">
-							<div class="popular-server-icon">🎭</div>
-							<div class="popular-server-info">
-								<div class="popular-server-name">Puppeteer</div>
-								<div class="popular-server-desc">Browser automation</div>
-							</div>
-						</div>
-						<div class="popular-server-item" onclick="addPopularServer('fetch', { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-fetch'] })">
-							<div class="popular-server-icon">🌐</div>
-							<div class="popular-server-info">
-								<div class="popular-server-name">Fetch</div>
-								<div class="popular-server-desc">HTTP requests & web scraping</div>
-							</div>
-						</div>
-						<div class="popular-server-item" onclick="addPopularServer('filesystem', { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] })">
-							<div class="popular-server-icon">📁</div>
-							<div class="popular-server-info">
-								<div class="popular-server-name">Filesystem</div>
-								<div class="popular-server-desc">File operations & management</div>
-							</div>
-						</div>
-					</div>
+			</div>
+
+			<!-- Scope Info -->
+			<div class="mcp-scope-info" id="mcpScopeInfo">
+				<span id="mcpScopeDescription">Browse and manage all MCP servers</span>
+				<div class="mcp-stats">
+					<span id="mcpStatsText">0 servers</span>
 				</div>
-				<div class="mcp-add-form" id="addServerForm" style="display: none;">
-				<div class="form-group">
-					<label for="serverName">Server Name:</label>
-					<input type="text" id="serverName" placeholder="my-server" required>
-				</div>
-				<div class="form-group">
-					<label for="serverType">Server Type:</label>
-					<select id="serverType" onchange="updateServerForm()">
-						<option value="http">HTTP</option>
-						<option value="sse">SSE</option>
-						<option value="stdio">stdio</option>
-					</select>
-				</div>
-				<div class="form-group" id="commandGroup" style="display: none;">
-					<label for="serverCommand">Command:</label>
-					<input type="text" id="serverCommand" placeholder="/path/to/server">
-				</div>
-				<div class="form-group" id="urlGroup">
-					<label for="serverUrl">URL:</label>
-					<input type="text" id="serverUrl" placeholder="https://example.com/mcp">
-				</div>
-				<div class="form-group" id="argsGroup" style="display: none;">
-					<label for="serverArgs">Arguments (one per line):</label>
-					<textarea id="serverArgs" placeholder="--api-key&#10;abc123" rows="3"></textarea>
-				</div>
-				<div class="form-group" id="envGroup" style="display: none;">
-					<label for="serverEnv">Environment Variables (KEY=value, one per line):</label>
-					<textarea id="serverEnv" placeholder="API_KEY=123&#10;CACHE_DIR=/tmp" rows="3"></textarea>
-				</div>
-				<div class="form-group" id="headersGroup">
-					<label for="serverHeaders">Headers (KEY=value, one per line):</label>
-					<textarea id="serverHeaders" placeholder="Authorization=Bearer token&#10;X-API-Key=key" rows="3"></textarea>
-				</div>
-				<div class="form-buttons">
-					<button class="btn" onclick="saveMCPServer()">Add Server</button>
-					<button class="btn outlined" onclick="hideAddServerForm()">Cancel</button>
-				</div>
+			</div>
+
+			<!-- Server List -->
+			<div class="mcp-server-list" id="mcpServerList">
+				<!-- Servers will be loaded here -->
+			</div>
+
+			<!-- Loading State -->
+			<div class="mcp-loading" id="mcpLoading" style="display: none;">
+				<div class="loading-spinner"></div>
+				<span>Loading servers...</span>
+			</div>
+
+			<!-- Empty State -->
+			<div class="mcp-empty-state" id="mcpEmptyState" style="display: none;">
+				<div class="empty-icon">📦</div>
+				<h3>No servers found</h3>
+				<p>Try adjusting your search or browse available servers to install.</p>
+			</div>
+
+			<!-- Action Buttons -->
+			<div class="mcp-actions">
+				<button class="btn outlined" onclick="showCustomMCPForm()">
+					<span>⚙️</span> Add Custom Server
+				</button>
+				<button class="btn outlined" onclick="refreshMCPServers()">
+					<span>🔄</span> Refresh
+				</button>
 			</div>
 		</div>
 	</div>
+
+	<!-- Custom MCP Server Form Modal -->
+	<div id="mcpCustomModal" class="tools-modal" style="display: none;">
+		<div class="tools-modal-content">
+			<div class="tools-modal-header">
+				<span>Add Custom MCP Server</span>
+				<button class="tools-close-btn" onclick="hideCustomMCPModal()">✕</button>
+			</div>
+			<div class="mcp-custom-form">
+				<div class="form-group">
+					<label for="customServerName">Server Name:</label>
+					<input type="text" id="customServerName" placeholder="my-server" required>
+				</div>
+				<div class="form-group">
+					<label for="customServerScope">Scope:</label>
+					<select id="customServerScope">
+						<option value="local">Local (Session only)</option>
+						<option value="project">Project (Shared via .mcp.json)</option>
+						<option value="user">User (Global)</option>
+					</select>
+				</div>
+				<div class="form-group">
+					<label for="customServerType">Server Type:</label>
+					<select id="customServerType" onchange="updateCustomServerForm()">
+						<option value="stdio">stdio (NPX package)</option>
+						<option value="http">HTTP</option>
+						<option value="sse">SSE</option>
+					</select>
+				</div>
+				<div class="form-group" id="customCommandGroup">
+					<label for="customServerCommand">Command:</label>
+					<input type="text" id="customServerCommand" placeholder="npx">
+				</div>
+				<div class="form-group" id="customUrlGroup" style="display: none;">
+					<label for="customServerUrl">URL:</label>
+					<input type="text" id="customServerUrl" placeholder="https://example.com/mcp">
+				</div>
+				<div class="form-group" id="customArgsGroup">
+					<label for="customServerArgs">Arguments (one per line):</label>
+					<textarea id="customServerArgs" placeholder="-y&#10;@modelcontextprotocol/server-example" rows="3"></textarea>
+				</div>
+				<div class="form-group" id="customEnvGroup">
+					<label for="customServerEnv">Environment Variables (KEY=value, one per line):</label>
+					<textarea id="customServerEnv" placeholder="API_KEY=your_key&#10;CACHE_DIR=/tmp" rows="3"></textarea>
+				</div>
+				<div class="form-group" id="customHeadersGroup" style="display: none;">
+					<label for="customServerHeaders">Headers (KEY=value, one per line):</label>
+					<textarea id="customServerHeaders" placeholder="Authorization=Bearer token&#10;X-API-Key=key" rows="3"></textarea>
+				</div>
+				<div class="form-buttons">
+					<button class="btn primary" onclick="saveCustomMCPServer()">Add Server</button>
+					<button class="btn outlined" onclick="hideCustomMCPModal()">Cancel</button>
+				</div>
+			</div>
+		</div>
 	</div>
 
 	<!-- Settings modal -->
