@@ -553,62 +553,6 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 					</div>
 					
 					<!-- Built-in Snippets -->
-					<div class="slash-command-item prompt-snippet-item" onclick="usePromptSnippet('performance-analysis')">
-						<div class="slash-command-icon">⚡</div>
-						<div class="slash-command-content">
-							<div class="slash-command-title">/performance-analysis</div>
-							<div class="slash-command-description">Analyze this code for performance issues and suggest optimizations</div>
-						</div>
-					</div>
-					<div class="slash-command-item prompt-snippet-item" onclick="usePromptSnippet('security-review')">
-						<div class="slash-command-icon">🔒</div>
-						<div class="slash-command-content">
-							<div class="slash-command-title">/security-review</div>
-							<div class="slash-command-description">Review this code for security vulnerabilities</div>
-						</div>
-					</div>
-					<div class="slash-command-item prompt-snippet-item" onclick="usePromptSnippet('implementation-review')">
-						<div class="slash-command-icon">🔍</div>
-						<div class="slash-command-content">
-							<div class="slash-command-title">/implementation-review</div>
-							<div class="slash-command-description">Review the implementation in this code</div>
-						</div>
-					</div>
-					<div class="slash-command-item prompt-snippet-item" onclick="usePromptSnippet('code-explanation')">
-						<div class="slash-command-icon">📖</div>
-						<div class="slash-command-content">
-							<div class="slash-command-title">/code-explanation</div>
-							<div class="slash-command-description">Explain how this code works in detail</div>
-						</div>
-					</div>
-					<div class="slash-command-item prompt-snippet-item" onclick="usePromptSnippet('bug-fix')">
-						<div class="slash-command-icon">🐛</div>
-						<div class="slash-command-content">
-							<div class="slash-command-title">/bug-fix</div>
-							<div class="slash-command-description">Help me fix this bug in my code</div>
-						</div>
-					</div>
-					<div class="slash-command-item prompt-snippet-item" onclick="usePromptSnippet('refactor')">
-						<div class="slash-command-icon">🔄</div>
-						<div class="slash-command-content">
-							<div class="slash-command-title">/refactor</div>
-							<div class="slash-command-description">Refactor this code to improve readability and maintainability</div>
-						</div>
-					</div>
-					<div class="slash-command-item prompt-snippet-item" onclick="usePromptSnippet('test-generation')">
-						<div class="slash-command-icon">🧪</div>
-						<div class="slash-command-content">
-							<div class="slash-command-title">/test-generation</div>
-							<div class="slash-command-description">Generate comprehensive tests for this code</div>
-						</div>
-					</div>
-					<div class="slash-command-item prompt-snippet-item" onclick="usePromptSnippet('documentation')">
-						<div class="slash-command-icon">📝</div>
-						<div class="slash-command-content">
-							<div class="slash-command-title">/documentation</div>
-							<div class="slash-command-description">Generate documentation for this code</div>
-						</div>
-					</div>
 				</div>
 			</div>
 			
