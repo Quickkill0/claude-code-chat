@@ -609,4 +609,124 @@ export class ConfigManager {
 			throw cliError;
 		}
 	}
+
+	// ========================================================================================
+	// CLAUDE.md File Management
+	// ========================================================================================
+
+	/**
+	 * Gets the default CLAUDE.md template
+	 */
+	getClaudeMdTemplate(): string {
+		return `# Project Instructions for Claude
+
+## Overview
+This file contains project-specific instructions and context for Claude Code Chat.
+Edit this file to customize Claude's behavior for your project.
+
+## Project Context
+<!-- Describe your project, its purpose, and key technologies -->
+
+## Coding Standards
+<!-- Define your preferred coding standards and conventions -->
+- Follow TypeScript best practices
+- Use meaningful variable names
+- Add JSDoc comments for public methods
+- Prefer async/await over callbacks
+
+## Architecture Guidelines
+<!-- Describe architectural patterns and decisions -->
+
+## Important Files and Folders
+<!-- List key files and their purposes -->
+
+## Development Workflow
+<!-- Describe your development process -->
+
+## Testing Requirements
+<!-- Specify testing approach and requirements -->
+
+## Performance Considerations
+<!-- Note any performance requirements or constraints -->
+
+## Security Guidelines
+<!-- Important security considerations -->
+
+## Custom Instructions
+<!-- Add any specific instructions for Claude -->
+
+---
+*Last updated: ${new Date().toISOString().split('T')[0]}*
+`;
+	}
+
+	/**
+	 * Reads the CLAUDE.md file from workspace root
+	 */
+	async readClaudeMd(): Promise<{ content: string; exists: boolean; template?: string }> {
+		try {
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+			const template = this.getClaudeMdTemplate();
+
+			if (!workspaceFolder) {
+				return { content: '', exists: false, template };
+			}
+
+			const claudeMdPath = vscode.Uri.joinPath(workspaceFolder.uri, 'CLAUDE.md');
+
+			try {
+				const content = await vscode.workspace.fs.readFile(claudeMdPath);
+				return { content: new TextDecoder().decode(content), exists: true, template };
+			} catch (error) {
+				// File doesn't exist, return empty content but provide template for later use
+				console.log('CLAUDE.md not found, returning empty content');
+				return { content: '', exists: false, template };
+			}
+		} catch (error) {
+			console.error('Error reading CLAUDE.md:', error);
+			throw new Error('Failed to read CLAUDE.md file');
+		}
+	}
+
+	/**
+	 * Writes content to CLAUDE.md file in workspace root
+	 */
+	async writeClaudeMd(content: string): Promise<void> {
+		try {
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+			if (!workspaceFolder) {
+				throw new Error('No workspace folder found');
+			}
+
+			const claudeMdPath = vscode.Uri.joinPath(workspaceFolder.uri, 'CLAUDE.md');
+
+			// Create backup of existing file if it exists
+			try {
+				const existingContent = await vscode.workspace.fs.readFile(claudeMdPath);
+				const backupPath = vscode.Uri.joinPath(workspaceFolder.uri, 'CLAUDE.md.bak');
+				await vscode.workspace.fs.writeFile(backupPath, existingContent);
+				console.log('Created backup at CLAUDE.md.bak');
+			} catch {
+				// File doesn't exist yet, no backup needed
+			}
+
+			// Write the new content
+			const contentBuffer = new TextEncoder().encode(content);
+			await vscode.workspace.fs.writeFile(claudeMdPath, contentBuffer);
+
+			console.log('Successfully wrote CLAUDE.md');
+		} catch (error) {
+			console.error('Error writing CLAUDE.md:', error);
+			throw new Error('Failed to write CLAUDE.md file');
+		}
+	}
+
+	/**
+	 * Validates CLAUDE.md file size
+	 */
+	async validateClaudeMdSize(content: string): Promise<boolean> {
+		const maxSizeKB = 1024; // 1MB limit
+		const sizeKB = new TextEncoder().encode(content).length / 1024;
+		return sizeKB <= maxSizeKB;
+	}
 }

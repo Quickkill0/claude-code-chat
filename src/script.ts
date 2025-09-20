@@ -3676,6 +3676,10 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				vscode.postMessage({
 					type: 'getPermissions'
 				});
+				// Request CLAUDE.md content
+				vscode.postMessage({
+					type: 'loadClaudeMd'
+				});
 				settingsModal.style.display = 'flex';
 			} else {
 				hideSettingsModal();
@@ -3683,6 +3687,13 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		}
 
 		function hideSettingsModal() {
+			// Check for unsaved CLAUDE.md changes
+			const contentEl = document.getElementById('claudeMdContent');
+			if (contentEl && originalClaudeMdContent && contentEl.value !== originalClaudeMdContent) {
+				if (!confirm('You have unsaved changes to CLAUDE.md. Are you sure you want to close without saving?')) {
+					return;
+				}
+			}
 			document.getElementById('settingsModal').style.display = 'none';
 		}
 
@@ -3709,6 +3720,93 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					'permissions.yoloMode': yoloMode
 				}
 			});
+		}
+
+		// CLAUDE.md editor functions
+		let originalClaudeMdContent = '';
+		let claudeMdTemplate = '';
+
+		function loadClaudeMd() {
+			const statusEl = document.getElementById('claudeMdStatus');
+			const contentEl = document.getElementById('claudeMdContent');
+			const loadingEl = document.getElementById('claudeMdLoading');
+
+			if (statusEl) statusEl.textContent = 'Loading...';
+			if (loadingEl) loadingEl.style.display = 'flex';
+			if (contentEl) contentEl.disabled = true;
+
+			vscode.postMessage({
+				type: 'loadClaudeMd'
+			});
+		}
+
+		function saveClaudeMd() {
+			const contentEl = document.getElementById('claudeMdContent');
+			const statusEl = document.getElementById('claudeMdStatus');
+			const loadingEl = document.getElementById('claudeMdLoading');
+
+			if (!contentEl) return;
+
+			const content = contentEl.value;
+
+			if (statusEl) statusEl.textContent = 'Saving...';
+			if (loadingEl) loadingEl.style.display = 'flex';
+			if (contentEl) contentEl.disabled = true;
+
+			vscode.postMessage({
+				type: 'saveClaudeMd',
+				content: content
+			});
+		}
+
+		function resetClaudeMd() {
+			const contentEl = document.getElementById('claudeMdContent');
+			if (contentEl && originalClaudeMdContent) {
+				contentEl.value = originalClaudeMdContent;
+				updateClaudeMdStatus(false);
+			}
+		}
+
+		function loadClaudeMdTemplate() {
+			const contentEl = document.getElementById('claudeMdContent');
+			if (contentEl && claudeMdTemplate) {
+				// Confirm before loading template if there are unsaved changes
+				if (contentEl.value !== originalClaudeMdContent && contentEl.value.trim() !== '') {
+					if (!confirm('You have unsaved changes. Loading the template will overwrite your current content. Continue?')) {
+						return;
+					}
+				}
+				// Load template directly without backend call
+				contentEl.value = claudeMdTemplate;
+				updateClaudeMdStatus(true);
+			}
+		}
+
+		// Add keyboard shortcut support for CLAUDE.md editor
+		document.addEventListener('DOMContentLoaded', () => {
+			const claudeMdContent = document.getElementById('claudeMdContent');
+			if (claudeMdContent) {
+				claudeMdContent.addEventListener('keydown', (e) => {
+					// Ctrl+S or Cmd+S to save
+					if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+						e.preventDefault();
+						saveClaudeMd();
+					}
+				});
+			}
+		});
+
+		function updateClaudeMdStatus(modified) {
+			const statusEl = document.getElementById('claudeMdStatus');
+			if (statusEl) {
+				if (modified) {
+					statusEl.textContent = 'Modified - unsaved changes';
+					statusEl.style.color = 'var(--vscode-editorWarning-foreground)';
+				} else {
+					statusEl.textContent = 'Saved';
+					statusEl.style.color = 'var(--vscode-descriptionForeground)';
+				}
+			}
 		}
 
 		// Permissions management functions
@@ -3894,12 +3992,74 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				vscode.postMessage({
 					type: 'getCustomSnippets'
 				});
+			} else if (message.type === 'claudeMdLoaded') {
+				// Handle CLAUDE.md content loaded
+				const contentEl = document.getElementById('claudeMdContent');
+				const statusEl = document.getElementById('claudeMdStatus');
+				const loadingEl = document.getElementById('claudeMdLoading');
+
+				// Store the template for later use
+				if (message.data.template) {
+					claudeMdTemplate = message.data.template;
+				}
+
+				if (contentEl) {
+					contentEl.value = message.data.content;
+					contentEl.disabled = false;
+					originalClaudeMdContent = message.data.content;
+
+					// Add change listener to track modifications
+					contentEl.onchange = contentEl.oninput = () => {
+						const isModified = contentEl.value !== originalClaudeMdContent;
+						updateClaudeMdStatus(isModified);
+					};
+				}
+
+				if (statusEl) {
+					statusEl.textContent = message.data.exists ? 'Loaded from file' : 'New file - empty';
+					statusEl.style.color = 'var(--vscode-descriptionForeground)';
+				}
+
+				if (loadingEl) loadingEl.style.display = 'none';
+			} else if (message.type === 'claudeMdSaved') {
+				// Handle CLAUDE.md save success
+				const contentEl = document.getElementById('claudeMdContent');
+				const statusEl = document.getElementById('claudeMdStatus');
+				const loadingEl = document.getElementById('claudeMdLoading');
+
+				if (contentEl) {
+					contentEl.disabled = false;
+					originalClaudeMdContent = contentEl.value;
+				}
+
+				if (statusEl) {
+					statusEl.textContent = 'Saved successfully';
+					statusEl.style.color = 'var(--vscode-testing-iconPassed)';
+				}
+
+				if (loadingEl) loadingEl.style.display = 'none';
+
+				// Reset status after a delay
+				setTimeout(() => updateClaudeMdStatus(false), 2000);
+			} else if (message.type === 'claudeMdError') {
+				// Handle CLAUDE.md error
+				const statusEl = document.getElementById('claudeMdStatus');
+				const loadingEl = document.getElementById('claudeMdLoading');
+				const contentEl = document.getElementById('claudeMdContent');
+
+				if (statusEl) {
+					statusEl.textContent = message.data || 'Error occurred';
+					statusEl.style.color = 'var(--vscode-errorForeground)';
+				}
+
+				if (loadingEl) loadingEl.style.display = 'none';
+				if (contentEl) contentEl.disabled = false;
 			} else if (message.type === 'settingsData') {
 				// Update UI with current settings
 				const thinkingIntensity = message.data['thinking.intensity'] || 'think';
 				const intensityValues = ['think', 'think-hard', 'think-harder', 'ultrathink'];
 				const sliderValue = intensityValues.indexOf(thinkingIntensity);
-				
+
 				// Update thinking intensity modal if it exists
 				const thinkingIntensitySlider = document.getElementById('thinkingIntensitySlider');
 				if (thinkingIntensitySlider) {

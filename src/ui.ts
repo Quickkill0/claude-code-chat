@@ -375,7 +375,44 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 					</div>
 				</div>
 
-				
+				<h3 style="margin-top: 24px; margin-bottom: 16px; font-size: 14px; font-weight: 600;">Project Instructions (CLAUDE.md)</h3>
+				<div>
+					<p style="font-size: 11px; color: var(--vscode-descriptionForeground); margin: 0;">
+						Edit the CLAUDE.md file to provide project-specific instructions and context for Claude.
+					</p>
+				</div>
+				<div class="settings-group">
+					<div class="claude-md-editor">
+						<div class="claude-md-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+							<div class="claude-md-status" id="claudeMdStatus" style="font-size: 11px; color: var(--vscode-descriptionForeground);">
+								Loading...
+							</div>
+							<div class="claude-md-actions" style="display: flex; gap: 8px;">
+								<button class="btn outlined small" onclick="loadClaudeMdTemplate()" title="Load template">📝 Template</button>
+								<button class="btn outlined small" onclick="resetClaudeMd()" title="Reset to last saved">↺ Reset</button>
+								<button class="btn primary small" onclick="saveClaudeMd()" title="Save changes">💾 Save</button>
+							</div>
+						</div>
+						<div class="claude-md-editor-container" style="position: relative;">
+							<textarea
+								id="claudeMdContent"
+								class="claude-md-textarea"
+								placeholder="Enter your project instructions for Claude..."
+								style="width: 95%; min-height: 200px; max-height: 400px; padding: 12px; font-family: var(--vscode-editor-font-family, 'Courier New', monospace); font-size: 12px; line-height: 1.5; background: var(--vscode-editor-background); color: var(--vscode-editor-foreground); border: 1px solid var(--vscode-editorWidget-border); border-radius: 4px; resize: vertical;"
+								spellcheck="false"
+							></textarea>
+							<div id="claudeMdLoading" class="claude-md-loading" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--vscode-editor-background); opacity: 0.9; display: flex; align-items: center; justify-content: center;">
+								<div class="loading-spinner"></div>
+							</div>
+						</div>
+						<div class="claude-md-hint" style="margin-top: 8px; font-size: 11px; color: var(--vscode-descriptionForeground);">
+							<div>💡 Use this file to provide project context, coding standards, and custom instructions.</div>
+							<div style="margin-top: 4px;">📍 File location: <code style="background: var(--vscode-textCodeBlock-background); padding: 2px 4px; border-radius: 3px;">CLAUDE.md</code> in your workspace root</div>
+						</div>
+					</div>
+				</div>
+
+
 			</div>
 		</div>
 	</div>

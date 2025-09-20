@@ -321,6 +321,12 @@ class ClaudeChatProvider {
 			case 'runAbMethod':
 				this._runAbMethod();
 				return;
+			case 'loadClaudeMd':
+				this._loadClaudeMd();
+				return;
+			case 'saveClaudeMd':
+				this._saveClaudeMd(message.content);
+				return;
 		}
 	}
 
@@ -1274,6 +1280,54 @@ class ClaudeChatProvider {
 			this._postMessage({
 				type: 'error',
 				data: 'Failed to delete custom snippet'
+			});
+		}
+	}
+
+	private async _loadClaudeMd(): Promise<void> {
+		try {
+			const result = await this._configManager.readClaudeMd();
+			this._postMessage({
+				type: 'claudeMdLoaded',
+				data: {
+					content: result.content,
+					exists: result.exists,
+					template: result.template
+				}
+			});
+		} catch (error) {
+			console.error('Error loading CLAUDE.md:', error);
+			this._postMessage({
+				type: 'claudeMdError',
+				data: 'Failed to load CLAUDE.md file'
+			});
+		}
+	}
+
+	private async _saveClaudeMd(content: string): Promise<void> {
+		try {
+			// Validate size
+			const isValidSize = await this._configManager.validateClaudeMdSize(content);
+			if (!isValidSize) {
+				this._postMessage({
+					type: 'claudeMdError',
+					data: 'File is too large (max 1MB)'
+				});
+				return;
+			}
+
+			// Save the file
+			await this._configManager.writeClaudeMd(content);
+
+			this._postMessage({
+				type: 'claudeMdSaved',
+				data: 'CLAUDE.md saved successfully'
+			});
+		} catch (error) {
+			console.error('Error saving CLAUDE.md:', error);
+			this._postMessage({
+				type: 'claudeMdError',
+				data: 'Failed to save CLAUDE.md file'
 			});
 		}
 	}

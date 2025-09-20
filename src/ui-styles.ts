@@ -65,6 +65,12 @@ const styles = `
         border-color: var(--vscode-focusBorder);
     }
 
+    .btn.small {
+        padding: 4px 8px;
+        font-size: 11px;
+        min-width: auto;
+    }
+
     .btn.stop {
         background-color: transparent;
         color: var(--vscode-descriptionForeground);
