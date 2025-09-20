@@ -9,10 +9,18 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		const fileSearchInput = document.getElementById('fileSearchInput');
 		const fileList = document.getElementById('fileList');
 		const imageBtn = document.getElementById('imageBtn');
+		const filePickerTitle = document.getElementById('filePickerTitle');
+		const fileModeBtn = document.getElementById('fileModeBtn');
+		const folderModeBtn = document.getElementById('folderModeBtn');
+		const filePickerBreadcrumb = document.getElementById('filePickerBreadcrumb');
+		const currentPathSpan = document.getElementById('currentPath');
 
 		let isProcessRunning = false;
 		let filteredFiles = [];
 		let selectedFileIndex = -1;
+		let isFileMode = true; // true for files, false for folders
+		let currentFolderPath = '';
+		let filteredFolders = [];
 		let planModeEnabled = false;
 		let thinkingModeEnabled = false;
 		let yoloModeEnabled = false;
@@ -51,7 +59,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			messageDiv.className = \`message \${type}\`;
 			
 			// Add header for main message types (excluding system)
-			if (type === 'user' || type === 'claude' || type === 'error') {
+			if (type === 'user' || type === 'claude' || type === 'error' || type === 'info' || type === 'success') {
 				const headerDiv = document.createElement('div');
 				headerDiv.className = 'message-header';
 				
@@ -74,6 +82,14 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					case 'error':
 						iconDiv.textContent = '⚠️';
 						labelDiv.textContent = 'Error';
+						break;
+					case 'info':
+						iconDiv.textContent = 'ℹ️';
+						labelDiv.textContent = 'Info';
+						break;
+					case 'success':
+						iconDiv.textContent = '✅';
+						labelDiv.textContent = 'Success';
 						break;
 				}
 				
@@ -1035,9 +1051,11 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		});
 
 		fileSearchInput.addEventListener('keydown', (e) => {
+			const items = isFileMode ? filteredFiles : filteredFolders;
+
 			if (e.key === 'ArrowDown') {
 				e.preventDefault();
-				selectedFileIndex = Math.min(selectedFileIndex + 1, filteredFiles.length - 1);
+				selectedFileIndex = Math.min(selectedFileIndex + 1, items.length - 1);
 				renderFileList();
 			} else if (e.key === 'ArrowUp') {
 				e.preventDefault();
@@ -1045,7 +1063,20 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				renderFileList();
 			} else if (e.key === 'Enter' && selectedFileIndex >= 0) {
 				e.preventDefault();
-				selectFile(filteredFiles[selectedFileIndex]);
+				const selectedItem = items[selectedFileIndex];
+				if (isFileMode) {
+					selectFile(selectedItem);
+				} else {
+					if (e.ctrlKey || e.metaKey) {
+						// Ctrl+Enter navigates into folder
+						if (selectedItem.isDirectory) {
+							navigateToFolder(selectedItem);
+						}
+					} else {
+						// Enter selects the folder
+						selectFolder(selectedItem);
+					}
+				}
 			} else if (e.key === 'Escape') {
 				e.preventDefault();
 				hideFilePicker();
@@ -1618,6 +1649,12 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		window.installMCPServerWithAPIKey = installMCPServerWithAPIKey;
 		// Legacy function for backward compatibility
 		window.deleteMCPServer = uninstallMCPServer;
+
+		// Make folder mode functions globally accessible for onclick handlers
+		window.switchToFileMode = switchToFileMode;
+		window.switchToFolderMode = switchToFolderMode;
+		window.navigateToRoot = navigateToRoot;
+		window.navigateToPath = navigateToPath;
 
 		function showCustomMCPForm() {
 			document.getElementById('mcpCustomModal').style.display = 'flex';
@@ -2823,7 +2860,15 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					selectedFileIndex = -1;
 					renderFileList();
 					break;
-					
+
+				case 'workspaceFolders':
+					filteredFolders = message.data;
+					currentFolderPath = message.currentPath || '';
+					selectedFileIndex = -1;
+					renderFileList();
+					updateBreadcrumb();
+					break;
+
 				case 'imagePath':
 					// Add the image path to the textarea
 					const currentText = messageInput.value;
@@ -3269,12 +3314,20 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 
 		// File picker functions
 		function showFilePicker() {
-			// Request initial file list from VS Code
-			vscode.postMessage({
-				type: 'getWorkspaceFiles',
-				searchTerm: ''
-			});
-			
+			// Request initial list from VS Code based on current mode
+			if (isFileMode) {
+				vscode.postMessage({
+					type: 'getWorkspaceFiles',
+					searchTerm: ''
+				});
+			} else {
+				vscode.postMessage({
+					type: 'getWorkspaceFolders',
+					searchTerm: '',
+					currentPath: currentFolderPath
+				});
+			}
+
 			// Show modal
 			filePickerModal.style.display = 'flex';
 			fileSearchInput.focus();
@@ -3307,26 +3360,60 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 
 		function renderFileList() {
 			fileList.innerHTML = '';
-			
-			filteredFiles.forEach((file, index) => {
+
+			const items = isFileMode ? filteredFiles : filteredFolders;
+
+			items.forEach((item, index) => {
 				const fileItem = document.createElement('div');
-				fileItem.className = 'file-item';
+				fileItem.className = isFileMode ? 'file-item' : 'file-item folder';
 				if (index === selectedFileIndex) {
 					fileItem.classList.add('selected');
 				}
-				
-				fileItem.innerHTML = \`
-					<span class="file-icon">\${getFileIcon(file.name)}</span>
-					<div class="file-info">
-						<div class="file-name">\${file.name}</div>
-						<div class="file-path">\${file.path}</div>
-					</div>
-				\`;
-				
-				fileItem.addEventListener('click', () => {
-					selectFile(file);
+
+				const icon = isFileMode ? getFileIcon(item.name) : '📁';
+
+				if (isFileMode) {
+					fileItem.innerHTML = \`
+						<span class="file-icon">\${icon}</span>
+						<div class="file-info">
+							<div class="file-name">\${item.name}</div>
+							<div class="file-path">\${item.path}</div>
+						</div>
+					\`;
+				} else {
+					// Folder mode - add navigation button
+					fileItem.innerHTML = \`
+						<span class="file-icon">\${icon}</span>
+						<div class="file-info">
+							<div class="file-name">\${item.name}</div>
+							<div class="file-path">\${item.path}</div>
+						</div>
+						<button class="folder-navigate-btn" title="Navigate into folder">
+							<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+								<path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+							</svg>
+						</button>
+					\`;
+				}
+
+				fileItem.addEventListener('click', (e) => {
+					// Check if the navigation button was clicked
+					if (e.target.closest('.folder-navigate-btn')) {
+						e.stopPropagation();
+						if (!isFileMode && item.isDirectory) {
+							navigateToFolder(item);
+						}
+						return;
+					}
+
+					// Main area clicked - select the item
+					if (isFileMode) {
+						selectFile(item);
+					} else {
+						selectFolder(item);
+					}
 				});
-				
+
 				fileList.appendChild(fileItem);
 			});
 		}
@@ -3353,12 +3440,142 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		}
 
 		function filterFiles(searchTerm) {
-			// Send search request to backend instead of filtering locally
+			// Send search request to backend based on current mode
+			if (isFileMode) {
+				vscode.postMessage({
+					type: 'getWorkspaceFiles',
+					searchTerm: searchTerm
+				});
+			} else {
+				vscode.postMessage({
+					type: 'getWorkspaceFolders',
+					searchTerm: searchTerm,
+					currentPath: currentFolderPath
+				});
+			}
+			selectedFileIndex = -1;
+		}
+
+		// Folder mode functions
+		function switchToFileMode() {
+			isFileMode = true;
+			fileModeBtn.classList.add('active');
+			folderModeBtn.classList.remove('active');
+			filePickerTitle.textContent = 'Select File';
+			fileSearchInput.placeholder = 'Search files...';
+			filePickerBreadcrumb.style.display = 'none';
+			currentFolderPath = '';
+
+			// Request files
 			vscode.postMessage({
 				type: 'getWorkspaceFiles',
-				searchTerm: searchTerm
+				searchTerm: fileSearchInput.value
 			});
-			selectedFileIndex = -1;
+		}
+
+		function switchToFolderMode() {
+			isFileMode = false;
+			fileModeBtn.classList.remove('active');
+			folderModeBtn.classList.add('active');
+			filePickerTitle.textContent = 'Select Folder';
+			fileSearchInput.placeholder = 'Search folders...';
+			filePickerBreadcrumb.style.display = 'flex';
+			currentFolderPath = '';
+
+			// Request folders
+			vscode.postMessage({
+				type: 'getWorkspaceFolders',
+				searchTerm: fileSearchInput.value,
+				currentPath: currentFolderPath
+			});
+		}
+
+		function navigateToFolder(folder) {
+			currentFolderPath = folder.path;
+
+			// Request contents of the selected folder
+			vscode.postMessage({
+				type: 'getWorkspaceFolders',
+				searchTerm: '',
+				currentPath: currentFolderPath
+			});
+
+			// Clear search input when navigating
+			fileSearchInput.value = '';
+		}
+
+		function navigateToRoot() {
+			currentFolderPath = '';
+
+			// Request root folders
+			vscode.postMessage({
+				type: 'getWorkspaceFolders',
+				searchTerm: fileSearchInput.value,
+				currentPath: currentFolderPath
+			});
+		}
+
+		function selectFolder(folder) {
+			// Insert folder path with trailing slash to indicate folder reference
+			const cursorPos = messageInput.selectionStart;
+			const textBefore = messageInput.value.substring(0, cursorPos);
+			const textAfter = messageInput.value.substring(cursorPos);
+
+			// Replace the @ symbol with the folder path
+			const beforeAt = textBefore.substring(0, textBefore.lastIndexOf('@'));
+			const newText = beforeAt + '@' + folder.path + '/ ' + textAfter;
+
+			messageInput.value = newText;
+			messageInput.focus();
+
+			// Set cursor position after the inserted path
+			const newCursorPos = beforeAt.length + folder.path.length + 3;
+			messageInput.setSelectionRange(newCursorPos, newCursorPos);
+
+			hideFilePicker();
+			adjustTextareaHeight();
+		}
+
+		function updateBreadcrumb() {
+			if (!isFileMode) {
+				filePickerBreadcrumb.style.display = 'flex';
+
+				if (currentFolderPath) {
+					const pathParts = currentFolderPath.split('/');
+					let breadcrumbHTML = '';
+					let currentPath = '';
+
+					pathParts.forEach((part, index) => {
+						if (index > 0) {
+							breadcrumbHTML += '<span class="breadcrumb-separator">/</span>';
+						}
+						currentPath += (index > 0 ? '/' : '') + part;
+						const clickablePath = currentPath;
+
+						breadcrumbHTML += \`<button class="breadcrumb-btn" onclick="navigateToPath('\${clickablePath}')">\${part}</button>\`;
+					});
+
+					currentPathSpan.innerHTML = breadcrumbHTML;
+				} else {
+					currentPathSpan.innerHTML = '';
+				}
+			} else {
+				filePickerBreadcrumb.style.display = 'none';
+			}
+		}
+
+		function navigateToPath(path) {
+			currentFolderPath = path;
+
+			// Request contents of the selected path
+			vscode.postMessage({
+				type: 'getWorkspaceFolders',
+				searchTerm: '',
+				currentPath: currentFolderPath
+			});
+
+			// Clear search input when navigating
+			fileSearchInput.value = '';
 		}
 
 		// Image handling functions
@@ -3731,6 +3948,12 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			}
 		});
 
-	</script>`
+		function runAbMethod() {
+			vscode.postMessage({
+				type: 'runAbMethod'
+			});
+		}
+
+	</script>`;
 
 export default getScript;

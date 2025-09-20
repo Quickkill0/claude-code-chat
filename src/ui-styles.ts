@@ -670,7 +670,7 @@ const styles = `
 
     .messages {
         flex: 1;
-        padding: 10px;
+        padding: 8px;
         overflow-y: auto;
         font-family: var(--vscode-editor-font-family);
         font-size: var(--vscode-editor-font-size);
@@ -678,14 +678,25 @@ const styles = `
     }
 
     .message {
-        margin-bottom: 10px;
-        padding: 8px;
-        border-radius: 4px;
+        margin-bottom: 6px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        animation: fadeIn 0.2s ease forwards;
+        transition: all 0.15s ease;
+    }
+
+    .message:hover {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     .message.user {
-        border: 1px solid rgba(64, 165, 255, 0.2);
-        border-radius: 8px;
+        border: 1px solid rgba(102, 51, 153, 0.15);
+        background: linear-gradient(90deg, rgba(102, 51, 153, 0.03) 0%, transparent 50%);
         color: var(--vscode-editor-foreground);
         font-family: var(--vscode-editor-font-family);
         position: relative;
@@ -698,13 +709,13 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 4px;
-        background: linear-gradient(180deg, #40a5ff 0%, #0078d4 100%);
+        width: 3px;
+        background: linear-gradient(180deg, #8B5CF6 0%, #6639B8 100%);
     }
 
     .message.claude {
         border: 1px solid rgba(46, 204, 113, 0.1);
-        border-radius: 8px;
+        background: linear-gradient(90deg, rgba(46, 204, 113, 0.03) 0%, transparent 50%);
         color: var(--vscode-editor-foreground);
         position: relative;
         overflow: hidden;
@@ -716,13 +727,13 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 4px;
+        width: 3px;
         background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
     }
 
     .message.error {
-        border: 1px solid rgba(231, 76, 60, 0.3);
-        border-radius: 8px;
+        border: 1px solid rgba(231, 76, 60, 0.2);
+        background: linear-gradient(90deg, rgba(231, 76, 60, 0.05) 0%, transparent 50%);
         color: var(--vscode-editor-foreground);
         position: relative;
         overflow: hidden;
@@ -734,22 +745,38 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 4px;
+        width: 3px;
         background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%);
     }
 
     .message.system {
-        background-color: var(--vscode-panel-background);
+        background: linear-gradient(90deg, rgba(127, 140, 141, 0.04) 0%, transparent 100%);
+        border: 1px solid rgba(127, 140, 141, 0.15);
         color: var(--vscode-descriptionForeground);
         font-style: italic;
+        font-size: 12px;
+        padding: 4px 8px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .message.system::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: rgba(127, 140, 141, 0.5);
     }
 
     .message.tool {
-        border: 1px solid rgba(120, 139, 237, 0.12);
-        border-radius: 8px;
+        border: 1px solid rgba(120, 139, 237, 0.1);
+        background: linear-gradient(90deg, rgba(120, 139, 237, 0.02) 0%, transparent 50%);
         color: var(--vscode-editor-foreground);
         position: relative;
         overflow: hidden;
+        padding: 5px 8px;
     }
 
     .message.tool::before {
@@ -758,18 +785,19 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 4px;
+        width: 3px;
         background: linear-gradient(180deg, #7c8bed 0%, #5d6fe1 100%);
     }
 
     .message.tool-result {
-        border: 1px solid rgba(28, 192, 140, 0.2);
-        border-radius: 8px;
+        border: 1px solid rgba(28, 192, 140, 0.15);
+        background: linear-gradient(90deg, rgba(28, 192, 140, 0.02) 0%, transparent 50%);
         color: var(--vscode-editor-foreground);
         font-family: var(--vscode-editor-font-family);
         white-space: pre-wrap;
         position: relative;
         overflow: hidden;
+        padding: 5px 8px;
     }
 
     .message.tool-result::before {
@@ -778,13 +806,13 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 4px;
+        width: 3px;
         background: linear-gradient(180deg, #1cc08c 0%, #16a974 100%);
     }
 
     .message.thinking {
-        border: 1px solid rgba(186, 85, 211, 0.2);
-        border-radius: 8px;
+        border: 1px solid rgba(186, 85, 211, 0.15);
+        background: linear-gradient(90deg, rgba(186, 85, 211, 0.03) 0%, transparent 50%);
         color: var(--vscode-editor-foreground);
         font-family: var(--vscode-editor-font-family);
         font-style: italic;
@@ -799,48 +827,48 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 4px;
+        width: 3px;
         background: linear-gradient(180deg, #ba55d3 0%, #9932cc 100%);
     }
 
     .tool-header {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 12px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        gap: 6px;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .tool-icon {
-        width: 18px;
-        height: 18px;
-        border-radius: 4px;
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
         background: linear-gradient(135deg, #7c8bed 0%, #5d6fe1 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
+        font-size: 8px;
         color: white;
         font-weight: 600;
         flex-shrink: 0;
-        margin-left: 6px;
+        margin-left: 4px;
     }
 
     .tool-info {
         font-weight: 500;
-        font-size: 13px;
+        font-size: 11px;
         color: var(--vscode-editor-foreground);
-        opacity: 0.9;
+        opacity: 0.8;
     }
 
     .message-header {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 8px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        gap: 6px;
+        margin-bottom: 4px;
+        padding-bottom: 3px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
         position: relative;
     }
 
@@ -869,21 +897,21 @@ const styles = `
     }
 
     .message-icon {
-        width: 18px;
-        height: 18px;
+        width: 14px;
+        height: 14px;
         border-radius: 3px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
+        font-size: 8px;
         color: white;
         font-weight: 600;
         flex-shrink: 0;
-        margin-left: 6px;
+        margin-left: 2px;
     }
 
     .message-icon.user {
-        background: linear-gradient(135deg, #40a5ff 0%, #0078d4 100%);
+        background: linear-gradient(135deg, #8B5CF6 0%, #6639B8 100%);
     }
 
     .message-icon.claude {
@@ -900,14 +928,16 @@ const styles = `
 
     .message-label {
         font-weight: 500;
-        font-size: 12px;
-        opacity: 0.8;
+        font-size: 10px;
+        opacity: 0.65;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.3px;
     }
 
     .message-content {
-        padding-left: 6px;
+        padding-left: 2px;
+        font-size: 13px;
+        line-height: 1.5;
     }
 
     /* Code blocks generated by markdown parser only */
@@ -1030,11 +1060,12 @@ const styles = `
     }
 
     .tool-input {
-        padding: 6px;
+        padding: 3px 4px;
         font-family: var(--vscode-editor-font-family);
-        font-size: 12px;
-        line-height: 1.4;
+        font-size: 11px;
+        line-height: 1.3;
         white-space: pre-line;
+        opacity: 0.9;
     }
 
     .tool-input-label {
@@ -1433,7 +1464,8 @@ const styles = `
     }
 
     .slash-btn,
-    .at-btn {
+    .at-btn,
+    .ab-btn {
         background-color: transparent;
         color: var(--vscode-foreground);
         border: none;
@@ -1446,7 +1478,8 @@ const styles = `
     }
 
     .slash-btn:hover,
-    .at-btn:hover {
+    .at-btn:hover,
+    .ab-btn:hover {
         background-color: var(--vscode-list-hoverBackground);
     }
 
@@ -1540,38 +1573,42 @@ const styles = `
     }
 
     .yolo-suggestion {
-        margin-top: 12px;
-        padding: 12px;
-        background-color: rgba(0, 122, 204, 0.1);
-        border: 1px solid rgba(0, 122, 204, 0.3);
-        border-radius: 6px;
+        margin-top: 6px;
+        padding: 6px 8px;
+        background-color: rgba(252, 188, 0, 0.05);
+        border: 1px solid rgba(252, 188, 0, 0.2);
+        border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: 8px;
+        animation: slideUp 0.2s ease;
     }
 
     .yolo-suggestion-text {
-        font-size: 12px;
+        font-size: 11px;
         color: var(--vscode-foreground);
         flex-grow: 1;
+        opacity: 0.9;
     }
 
     .yolo-suggestion-btn {
-        background-color: var(--vscode-button-background);
-        color: var(--vscode-button-foreground);
-        border: none;
-        border-radius: 4px;
-        padding: 6px 12px;
-        font-size: 11px;
+        background: linear-gradient(135deg, rgba(252, 188, 0, 0.12) 0%, rgba(252, 188, 0, 0.08) 100%);
+        color: #fcbc00;
+        border: 1px solid rgba(252, 188, 0, 0.25);
+        border-radius: 3px;
+        padding: 4px 8px;
+        font-size: 10px;
         cursor: pointer;
-        transition: background-color 0.2s ease;
+        transition: all 0.15s ease;
         font-weight: 500;
         flex-shrink: 0;
     }
 
     .yolo-suggestion-btn:hover {
-        background-color: var(--vscode-button-hoverBackground);
+        background: linear-gradient(135deg, rgba(252, 188, 0, 0.18) 0%, rgba(252, 188, 0, 0.12) 100%);
+        border-color: rgba(252, 188, 0, 0.35);
+        transform: translateY(-1px);
     }
 
     .file-picker-modal {
@@ -1687,6 +1724,123 @@ const styles = `
         max-width: 100%;
         max-height: 100%;
         object-fit: cover;
+    }
+
+    /* File picker mode toggle styles */
+    .file-picker-title-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .file-picker-mode-toggle {
+        display: flex;
+        gap: 4px;
+    }
+
+    .mode-toggle-btn {
+        background-color: var(--vscode-button-secondaryBackground);
+        color: var(--vscode-button-secondaryForeground);
+        border: 1px solid var(--vscode-button-border);
+        padding: 4px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s ease;
+    }
+
+    .mode-toggle-btn:hover {
+        background-color: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    .mode-toggle-btn.active {
+        background-color: var(--vscode-button-background);
+        color: var(--vscode-button-foreground);
+        border-color: var(--vscode-button-background);
+    }
+
+    /* File picker breadcrumb styles */
+    .file-picker-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-bottom: 8px;
+        font-size: 12px;
+        color: var(--vscode-descriptionForeground);
+    }
+
+    .breadcrumb-btn {
+        background: none;
+        border: none;
+        color: var(--vscode-textLink-foreground);
+        cursor: pointer;
+        padding: 2px 4px;
+        border-radius: 2px;
+        font-size: 12px;
+    }
+
+    .breadcrumb-btn:hover {
+        background-color: var(--vscode-list-hoverBackground);
+    }
+
+    .breadcrumb-separator {
+        color: var(--vscode-descriptionForeground);
+        margin: 0 2px;
+    }
+
+    /* Folder item specific styles */
+    .file-item.folder {
+        font-weight: 500;
+    }
+
+    .file-item.folder .file-icon {
+        font-size: 14px;
+    }
+
+    .file-item.folder:hover {
+        background-color: var(--vscode-list-hoverBackground);
+    }
+
+    .file-item.folder .file-info .file-path {
+        font-style: italic;
+    }
+
+    /* Folder navigation button styles */
+    .folder-navigate-btn {
+        background: none;
+        border: none;
+        color: var(--vscode-descriptionForeground);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 3px;
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.7;
+        transition: all 0.2s ease;
+    }
+
+    .folder-navigate-btn:hover {
+        background-color: var(--vscode-toolbar-hoverBackground);
+        color: var(--vscode-foreground);
+        opacity: 1;
+    }
+
+    .folder-navigate-btn svg {
+        pointer-events: none;
+    }
+
+    .file-item.folder {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .file-item.folder .file-info {
+        flex: 1;
+        min-width: 0;
     }
 
     .tools-modal {
@@ -3387,6 +3541,6 @@ const styles = `
         justify-content: flex-end;
         background: var(--header-background);
     }
-</style>`
+</style>`;
 
-export default styles
+export default styles;

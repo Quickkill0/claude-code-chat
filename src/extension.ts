@@ -240,6 +240,9 @@ class ClaudeChatProvider {
 			case 'getWorkspaceFiles':
 				this._sendWorkspaceFiles(message.searchTerm);
 				return;
+			case 'getWorkspaceFolders':
+				this._sendWorkspaceFolders(message.searchTerm, message.currentPath);
+				return;
 			case 'selectImageFile':
 				this._selectImageFile();
 				return;
@@ -314,6 +317,9 @@ class ClaudeChatProvider {
 				return;
 			case 'saveInputText':
 				this._saveInputText(message.text);
+				return;
+			case 'runAbMethod':
+				this._runAbMethod();
 				return;
 		}
 	}
@@ -799,6 +805,76 @@ class ClaudeChatProvider {
 		}
 	}
 
+	private async _sendWorkspaceFolders(searchTerm?: string, currentPath?: string): Promise<void> {
+		try {
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+			if (!workspaceFolder) {
+				this._postMessage({
+					type: 'workspaceFolders',
+					data: []
+				});
+				return;
+			}
+
+			// Base path - either current path or workspace root
+			const basePath = currentPath
+				? vscode.Uri.joinPath(workspaceFolder.uri, currentPath)
+				: workspaceFolder.uri;
+
+			// Read directory contents
+			const dirContents = await vscode.workspace.fs.readDirectory(basePath);
+
+			// Filter for directories only and exclude common directories
+			const excludedDirs = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.nuxt', 'target', 'bin', 'obj', '.vscode', '.ab-method']);
+
+			let folderList = dirContents
+				.filter(([name, type]) => {
+					return type === vscode.FileType.Directory && !excludedDirs.has(name) && !name.startsWith('.');
+				})
+				.map(([name, type]) => {
+					const folderPath = currentPath ? `${currentPath}/${name}` : name;
+					return {
+						name: name,
+						path: folderPath,
+						type: 'folder',
+						isDirectory: true
+					};
+				});
+
+			// Filter results based on search term
+			if (searchTerm && searchTerm.trim()) {
+				const term = searchTerm.toLowerCase();
+				folderList = folderList.filter(folder => {
+					const folderName = folder.name.toLowerCase();
+					const folderPath = folder.path.toLowerCase();
+
+					// Check if term matches folder name or any part of the path
+					return folderName.includes(term) ||
+						folderPath.includes(term) ||
+						folderPath.split('/').some(segment => segment.includes(term));
+				});
+			}
+
+			// Sort and limit results
+			folderList = folderList
+				.sort((a, b) => a.name.localeCompare(b.name))
+				.slice(0, 50);
+
+			this._postMessage({
+				type: 'workspaceFolders',
+				data: folderList,
+				currentPath: currentPath || ''
+			});
+		} catch (error) {
+			console.error('Error getting workspace folders:', error);
+			this._postMessage({
+				type: 'workspaceFolders',
+				data: [],
+				currentPath: currentPath || ''
+			});
+		}
+	}
+
 	private async _selectImageFile(): Promise<void> {
 		try {
 			// Show VS Code's native file picker for images
@@ -883,6 +959,96 @@ class ClaudeChatProvider {
 
 	private _saveInputText(text: string): void {
 		this._draftMessage = text || '';
+	}
+
+	private async _runAbMethod(): Promise<void> {
+		try {
+			// Get the workspace folder
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+			if (!workspaceFolder) {
+				vscode.window.showErrorMessage('No workspace folder found');
+				return;
+			}
+
+			// Create a new terminal
+			const terminal = vscode.window.createTerminal({
+				name: 'AB Method',
+				cwd: workspaceFolder.uri.fsPath
+			});
+
+			// Show the terminal
+			terminal.show();
+
+			// Send the command
+			terminal.sendText('npx ab-method');
+
+			// Small delay then send 'y'
+			setTimeout(() => {
+				terminal.sendText('y');
+			}, 2000);
+
+			// Send success message to UI
+			this._sendAndSaveMessage({
+				type: 'info',
+				data: '🚀 AB Method installation started in terminal. Check the terminal for progress.'
+			});
+
+			// Monitor terminal disposal to check result
+			const disposable = vscode.window.onDidCloseTerminal((closedTerminal) => {
+				if (closedTerminal === terminal) {
+					// Check if ab-method was successfully installed
+					this._checkAbMethodInstallation();
+					disposable.dispose();
+				}
+			});
+
+		} catch (error) {
+			console.error('Error running AB Method:', error);
+			this._sendAndSaveMessage({
+				type: 'error',
+				data: `❌ Failed to run AB Method: ${error instanceof Error ? error.message : 'Unknown error'}`
+			});
+		}
+	}
+
+	private async _checkAbMethodInstallation(): Promise<void> {
+		try {
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+			if (!workspaceFolder) {
+				return;
+			}
+
+			// Check if .ab-method folder exists
+			const abMethodPath = vscode.Uri.joinPath(workspaceFolder.uri, '.ab-method');
+
+			try {
+				const stat = await vscode.workspace.fs.stat(abMethodPath);
+				if (stat.type === vscode.FileType.Directory) {
+					// AB Method successfully installed
+					this._sendAndSaveMessage({
+						type: 'success',
+						data: '✅ AB Method successfully installed in your project!'
+					});
+				} else {
+					this._sendAndSaveMessage({
+						type: 'error',
+						data: '❌ AB Method installation failed - .ab-method directory not found'
+					});
+				}
+			} catch (error) {
+				// Directory doesn't exist
+				this._sendAndSaveMessage({
+					type: 'error',
+					data: '❌ AB Method installation failed - .ab-method directory not found'
+				});
+			}
+		} catch (error) {
+			console.error('Error checking AB Method installation:', error);
+			this._sendAndSaveMessage({
+				type: 'error',
+				data: '❌ Error checking AB Method installation status'
+			});
+		}
 	}
 
 	private async _updateSettings(settings: { [key: string]: any }): Promise<void> {

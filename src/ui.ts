@@ -1,5 +1,5 @@
 import getScript from './script';
-import styles from './ui-styles'
+import styles from './ui-styles';
 
 
 const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
@@ -102,6 +102,7 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 						</div>
 						<div class="right-controls">
 							<button class="slash-btn" onclick="showSlashCommandsModal()" title="Slash commands">/</button>
+							<button class="ab-btn" onclick="runAbMethod()" title="Run AB Method">AB</button>
 							<button class="at-btn" onclick="showFilePicker()" title="Reference files">@</button>
 							<button class="image-btn" id="imageBtn" onclick="selectImage()" title="Attach images">
 							<svg
@@ -148,7 +149,22 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 	<div id="filePickerModal" class="file-picker-modal" style="display: none;">
 		<div class="file-picker-content">
 			<div class="file-picker-header">
-				<span>Select File</span>
+				<div class="file-picker-title-section">
+					<span id="filePickerTitle">Select File</span>
+					<div class="file-picker-mode-toggle">
+						<button class="mode-toggle-btn active" id="fileModeBtn" onclick="switchToFileMode()">
+							📄 Files
+						</button>
+						<button class="mode-toggle-btn" id="folderModeBtn" onclick="switchToFolderMode()">
+							📁 Folders
+						</button>
+					</div>
+				</div>
+				<div class="file-picker-breadcrumb" id="filePickerBreadcrumb" style="display: none;">
+					<button class="breadcrumb-btn" onclick="navigateToRoot()">🏠 Root</button>
+					<span class="breadcrumb-separator">/</span>
+					<span id="currentPath"></span>
+				</div>
 				<input type="text" id="fileSearchInput" placeholder="Search files..." class="file-search-input">
 			</div>
 			<div id="fileList" class="file-list">
