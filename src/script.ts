@@ -2881,6 +2881,9 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				case 'conversationList':
 					displayConversationList(message.data);
 					break;
+				case 'checkpointList':
+					displayCheckpoints(message.data);
+					break;
 				case 'clipboardText':
 					handleClipboardText(message.data);
 					break;
@@ -3067,6 +3070,105 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				type: 'restoreCommit',
 				commitSha: commitSha
 			});
+		}
+
+		// Checkpoint Panel Functions
+		function toggleCheckpointPanel() {
+			const panel = document.getElementById('checkpointPanel');
+			if (panel.classList.contains('hidden')) {
+				panel.classList.remove('hidden');
+				loadCheckpoints();
+			} else {
+				panel.classList.add('hidden');
+			}
+		}
+
+		function closeCheckpointPanel() {
+			const panel = document.getElementById('checkpointPanel');
+			panel.classList.add('hidden');
+		}
+
+		function loadCheckpoints() {
+			vscode.postMessage({
+				type: 'getCheckpoints'
+			});
+		}
+
+		function refreshCheckpoints() {
+			loadCheckpoints();
+		}
+
+		function displayCheckpoints(checkpoints) {
+			const checkpointList = document.getElementById('checkpointList');
+
+			if (checkpoints.length === 0) {
+				checkpointList.innerHTML = '<div class="checkpoint-empty">No checkpoints available yet. Checkpoints are created automatically when you send messages.</div>';
+				return;
+			}
+
+			checkpointList.innerHTML = '';
+			checkpoints.forEach(checkpoint => {
+				const item = createCheckpointItem(checkpoint);
+				checkpointList.appendChild(item);
+			});
+		}
+
+		function createCheckpointItem(checkpoint) {
+			const item = document.createElement('div');
+			item.className = 'checkpoint-item';
+			item.dataset.sha = checkpoint.sha;
+
+			const timeAgo = getTimeAgo(new Date(checkpoint.timestamp));
+			const shortSha = checkpoint.sha ? checkpoint.sha.substring(0, 8) : 'unknown';
+			const messagePreview = checkpoint.message.length > 60
+				? checkpoint.message.substring(0, 60) + '...'
+				: checkpoint.message;
+
+			item.innerHTML = \`
+				<div class="checkpoint-time">\${timeAgo}</div>
+				<div class="checkpoint-message">\${escapeHtml(messagePreview)}</div>
+				<div class="checkpoint-actions">
+					<span class="checkpoint-sha">\${shortSha}</span>
+					<button class="checkpoint-restore-btn" onclick="restoreCheckpoint('\${checkpoint.sha}')">
+						Restore
+					</button>
+				</div>
+			\`;
+
+			return item;
+		}
+
+		function restoreCheckpoint(sha) {
+			if (confirm('Are you sure you want to restore to this checkpoint? This will revert all changes made after this point.')) {
+				vscode.postMessage({
+					type: 'restoreCommit',
+					commitSha: sha
+				});
+				closeCheckpointPanel();
+			}
+		}
+
+		function getTimeAgo(date) {
+			const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+
+			if (seconds < 60) return \`\${seconds}s ago\`;
+			const minutes = Math.floor(seconds / 60);
+			if (minutes < 60) return \`\${minutes}m ago\`;
+			const hours = Math.floor(minutes / 60);
+			if (hours < 24) return \`\${hours}h ago\`;
+			const days = Math.floor(hours / 24);
+			return \`\${days}d ago\`;
+		}
+
+		function escapeHtml(text) {
+			const map = {
+				'&': '&amp;',
+				'<': '&lt;',
+				'>': '&gt;',
+				'"': '&quot;',
+				"'": '&#039;'
+			};
+			return text.replace(/[&<>"']/g, m => map[m]);
 		}
 
 		function showRestoreContainer(data) {

@@ -3547,6 +3547,169 @@ const styles = `
         justify-content: flex-end;
         background: var(--header-background);
     }
+
+    /* Checkpoint Panel Styles */
+    .checkpoint-panel {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--vscode-editor-background);
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 8px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        width: 90%;
+        max-width: 600px;
+        max-height: 70vh;
+        display: flex;
+        flex-direction: column;
+        z-index: 2000;
+    }
+
+    .checkpoint-panel.hidden {
+        display: none;
+    }
+
+    .checkpoint-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--vscode-panel-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--vscode-panel-background);
+    }
+
+    .checkpoint-header h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--vscode-foreground);
+    }
+
+    .checkpoint-header .close-btn {
+        background: transparent;
+        border: none;
+        color: var(--vscode-foreground);
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        opacity: 0.7;
+        transition: all 0.2s ease;
+    }
+
+    .checkpoint-header .close-btn:hover {
+        opacity: 1;
+        background: var(--vscode-button-background);
+    }
+
+    .checkpoint-description {
+        padding: 12px 20px;
+        font-size: 13px;
+        color: var(--vscode-descriptionForeground);
+        border-bottom: 1px solid var(--vscode-panel-border);
+        background: var(--vscode-editor-background);
+    }
+
+    .checkpoint-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+    }
+
+    .checkpoint-item {
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        background: var(--vscode-panel-background);
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .checkpoint-item:hover {
+        background: var(--vscode-list-hoverBackground);
+        border-color: var(--vscode-focusBorder);
+    }
+
+    .checkpoint-time {
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+        margin-bottom: 4px;
+    }
+
+    .checkpoint-message {
+        font-size: 13px;
+        color: var(--vscode-foreground);
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+
+    .checkpoint-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .checkpoint-sha {
+        font-family: monospace;
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+        background: var(--vscode-editor-background);
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+
+    .checkpoint-restore-btn {
+        background: var(--vscode-button-background);
+        color: var(--vscode-button-foreground);
+        border: none;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .checkpoint-restore-btn:hover {
+        background: var(--vscode-button-hoverBackground);
+    }
+
+    .checkpoint-footer {
+        padding: 12px 20px;
+        border-top: 1px solid var(--vscode-panel-border);
+        background: var(--vscode-panel-background);
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .refresh-btn {
+        background: var(--vscode-button-secondaryBackground);
+        color: var(--vscode-button-secondaryForeground);
+        border: 1px solid var(--vscode-panel-border);
+        padding: 6px 16px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .refresh-btn:hover {
+        background: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    .checkpoint-empty {
+        padding: 32px 20px;
+        text-align: center;
+        color: var(--vscode-descriptionForeground);
+        font-size: 13px;
+        line-height: 1.5;
+    }
 </style>`;
 
 export default styles;

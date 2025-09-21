@@ -287,6 +287,33 @@ export class ConversationManager {
 	}
 
 	/**
+	 * Truncates the conversation after a specific checkpoint
+	 */
+	truncateAfterCheckpoint(checkpointIndex: number): void {
+		// Find messages that should be kept (up to the checkpoint)
+		// Each checkpoint corresponds to a user message
+		let userMessageCount = 0;
+		let truncateIndex = -1;
+
+		for (let i = 0; i < this._currentConversation.length; i++) {
+			const message = this._currentConversation[i];
+			if (message.messageType === 'userInput') {
+				if (userMessageCount === checkpointIndex) {
+					// Keep messages up to and including this user input
+					truncateIndex = i + 1;
+					break;
+				}
+				userMessageCount++;
+			}
+		}
+
+		if (truncateIndex > 0) {
+			this._currentConversation = this._currentConversation.slice(0, truncateIndex);
+			console.log(`Truncated conversation to ${truncateIndex} messages after checkpoint ${checkpointIndex}`);
+		}
+	}
+
+	/**
 	 * Gets conversation list for UI
 	 */
 	getConversationList(): ConversationIndexEntry[] {

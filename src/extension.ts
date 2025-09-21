@@ -237,6 +237,9 @@ class ClaudeChatProvider {
 			case 'getConversationList':
 				this._sendConversationList();
 				return;
+			case 'getCheckpoints':
+				this._sendCheckpointList();
+				return;
 			case 'getWorkspaceFiles':
 				this._sendWorkspaceFiles(message.searchTerm);
 				return;
@@ -724,6 +727,17 @@ class ClaudeChatProvider {
 					commitSha: commitSha
 				}
 			});
+
+			// Refresh the checkpoint list after restoration
+			this._sendCheckpointList();
+
+			// Clear the conversation after the restored checkpoint
+			// This ensures the conversation reflects the new timeline
+			const commitIndex = this._backupManager.commits.findIndex(c => c.sha === commitSha);
+			if (commitIndex !== -1) {
+				// Keep only messages up to this checkpoint
+				this._conversationManager.truncateAfterCheckpoint(commitIndex);
+			}
 		} else {
 			this._postMessage({
 				type: 'restoreError',
@@ -758,6 +772,15 @@ class ClaudeChatProvider {
 		this._postMessage({
 			type: 'conversationList',
 			data: this._conversationManager.getConversationList()
+		});
+	}
+
+	private _sendCheckpointList(): void {
+		// Get all commits from BackupManager and send to UI
+		const checkpoints = this._backupManager.commits;
+		this._postMessage({
+			type: 'checkpointList',
+			data: checkpoints
 		});
 	}
 

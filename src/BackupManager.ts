@@ -53,6 +53,7 @@ export class BackupManager {
 			// Create backup git directory if it doesn't exist
 			try {
 				await vscode.workspace.fs.stat(vscode.Uri.file(this._backupRepoPath));
+				// Repo exists, but we don't load existing commits
 			} catch {
 				await vscode.workspace.fs.createDirectory(vscode.Uri.file(this._backupRepoPath));
 
@@ -67,6 +68,42 @@ export class BackupManager {
 			}
 		} catch (error: any) {
 			console.error('Failed to initialize backup repository:', error.message);
+		}
+	}
+
+	/**
+	 * Loads existing commits from the backup repository
+	 * Note: This method is not called automatically on startup
+	 * to ensure each session starts fresh with its own checkpoints
+	 */
+	private async _loadExistingCommits(): Promise<void> {
+		if (!this._backupRepoPath) { return; }
+
+		try {
+			// Get all commits from the git log
+			const { stdout } = await exec(
+				`git --git-dir="${this._backupRepoPath}" log --pretty=format:"%H|%s|%ai" --date=iso`
+			);
+
+			if (!stdout.trim()) { return; }
+
+			const lines = stdout.trim().split('\n');
+			this._commits = lines.map(line => {
+				const [sha, message, timestamp] = line.split('|');
+				return {
+					id: `commit-${sha.substring(0, 8)}`,
+					sha,
+					message,
+					timestamp: new Date(timestamp).toISOString()
+				};
+			});
+
+			console.log(`Loaded ${this._commits.length} existing checkpoints`);
+		} catch (error: any) {
+			// If there are no commits yet, this is fine
+			if (!error.message.includes('does not have any commits')) {
+				console.error('Failed to load existing commits:', error.message);
+			}
 		}
 	}
 
@@ -154,10 +191,21 @@ export class BackupManager {
 
 			const workspacePath = workspaceFolder.uri.fsPath;
 
-			// Restore files directly to workspace using git checkout
-			await exec(`git --git-dir="${this._backupRepoPath}" --work-tree="${workspacePath}" checkout ${commitSha} -- .`);
+			// First, clean up any uncommitted changes in the working directory
+			await exec(`git --git-dir="${this._backupRepoPath}" --work-tree="${workspacePath}" clean -fd`);
 
-			vscode.window.showInformationMessage(`Restored to commit: ${commit.message}`);
+			// Reset the working tree to the specified commit
+			// This ensures we're restoring to the exact state at that checkpoint
+			await exec(`git --git-dir="${this._backupRepoPath}" --work-tree="${workspacePath}" reset --hard ${commitSha}`);
+
+			// Remove commits after the restored point from our list
+			// This ensures the checkpoint list reflects the new timeline
+			const commitIndex = this._commits.findIndex(c => c.sha === commitSha);
+			if (commitIndex !== -1) {
+				this._commits = this._commits.slice(0, commitIndex + 1);
+			}
+
+			vscode.window.showInformationMessage(`Restored to checkpoint: ${commit.message}`);
 
 			return {
 				success: true,

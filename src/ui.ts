@@ -23,6 +23,7 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 		<div style="display: flex; gap: 8px; align-items: center;">
 			<div id="sessionStatus" class="session-status" style="display: none;">No session</div>
 			<button class="btn outlined" id="settingsBtn" onclick="toggleSettings()" title="Settings">⚙️</button>
+			<button class="btn outlined" id="checkpointBtn" onclick="toggleCheckpointPanel()" title="Checkpoints">🔖</button>
 			<button class="btn outlined" id="historyBtn" onclick="toggleConversationHistory()">📚 History</button>
 			<button class="btn primary" id="newSessionBtn" onclick="newSession()">New Chat</button>
 		</div>
@@ -228,6 +229,23 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 					<span>🔄</span> Refresh
 				</button>
 			</div>
+		</div>
+	</div>
+
+	<!-- Checkpoint Panel -->
+	<div id="checkpointPanel" class="checkpoint-panel hidden">
+		<div class="checkpoint-header">
+			<h3>Checkpoints</h3>
+			<button class="close-btn" onclick="closeCheckpointPanel()">×</button>
+		</div>
+		<div class="checkpoint-description">
+			Select a checkpoint to restore your code to that point in time. This will revert all changes made after the selected checkpoint.
+		</div>
+		<div id="checkpointList" class="checkpoint-list">
+			<!-- Checkpoints will be populated here -->
+		</div>
+		<div class="checkpoint-footer">
+			<button class="refresh-btn" onclick="refreshCheckpoints()">Refresh</button>
 		</div>
 	</div>
 
