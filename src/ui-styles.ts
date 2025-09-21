@@ -2528,6 +2528,32 @@ const styles = `
         flex: 1;
     }
 
+    .todo-display {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin: 0 8px;
+        max-width: 50%;
+    }
+
+    .todo-icon {
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .todo-text {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.9);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+    }
+
     pre {
         white-space: pre-wrap;
         word-wrap: break-word;

@@ -1,5 +1,3 @@
-# Create Mission Workflow
-
 ## Purpose
 Execute one mission at a time, completing it entirely before moving to the next. Each mission uses specialized subagents for architecture and implementation.
 
