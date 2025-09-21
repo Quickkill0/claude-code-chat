@@ -25,6 +25,10 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		let thinkingModeEnabled = false;
 		let yoloModeEnabled = false;
 
+		// Context file management
+		let selectedContextFiles = new Set();
+		let contextFiles = new Map(); // Map of path -> {path, name, type, icon}
+
 		// MCP Server Management Variables
 		let mcpServersData = [];
 		let currentMCPScope = 'all';
@@ -49,6 +53,49 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			if (shouldScroll) {
 				messagesDiv.scrollTop = messagesDiv.scrollHeight;
 			}
+		}
+
+		function parseFileReferences(content) {
+			// Parse @file references and return HTML with file chips
+			// Split content into lines to better handle file references
+			const lines = content.split('\\n');
+			const fileLines = [];
+			const messageLines = [];
+			let foundNonFileLine = false;
+
+			for (const line of lines) {
+				const trimmedLine = line.trim();
+				// Check if line starts with @ (file reference)
+				if (trimmedLine.startsWith('@') && !foundNonFileLine) {
+					fileLines.push(trimmedLine);
+				} else if (trimmedLine.length > 0) {
+					foundNonFileLine = true;
+					messageLines.push(line);
+				} else if (foundNonFileLine) {
+					messageLines.push(line);
+				}
+			}
+
+			if (fileLines.length > 0) {
+				// Extract file paths and create chips section
+				const chips = fileLines.map(fileLine => {
+					const path = fileLine.substring(1).trim(); // Remove @ and trim
+					const name = path.split('/').pop() || path.split('\\\\').pop() || path;
+					const icon = path === '/' ? '📦' : (path.endsWith('/') ? '📁' : getFileIcon(name));
+					return \`<span class="inline-file-chip"><span class="file-icon">\${icon}</span><span class="file-name">\${name}</span></span>\`;
+				}).join(' '); // Add space between chips
+
+				const messageText = messageLines.join('\\n').trim();
+
+				// Return formatted content with chips at the top
+				if (messageText) {
+					return \`<div class="context-references">\${chips}</div><div class="message-text">\${parseSimpleMarkdown(messageText)}</div>\`;
+				} else {
+					return \`<div class="context-references">\${chips}</div>\`;
+				}
+			}
+
+			return parseSimpleMarkdown(content);
 		}
 
 		function addMessage(content, type = 'claude') {
@@ -110,7 +157,10 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			const contentDiv = document.createElement('div');
 			contentDiv.className = 'message-content';
 			
-			if(type == 'user' || type === 'claude' || type === 'thinking'){
+			if (type === 'user') {
+				// Parse file references for user messages
+				contentDiv.innerHTML = parseFileReferences(content);
+			} else if (type === 'claude' || type === 'thinking') {
 				contentDiv.innerHTML = content;
 			} else {
 				const preElement = document.createElement('pre');
@@ -739,18 +789,32 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 
 		function sendMessage() {
 			const text = messageInput.value.trim();
-			if (text) {
+			if (text || contextFiles.size > 0) {
 				// Clear todos when user sends a new message
 				updateTodoDisplay([]);
 
+				// Build message with context files
+				let fullMessage = '';
+
+				// Add context files as references with special separator
+				if (contextFiles.size > 0) {
+					// Use newline to separate file paths from message text
+					const filePaths = Array.from(contextFiles.values()).map(f => '@' + f.path).join('\\n');
+					fullMessage = filePaths + (text ? '\\n\\n' + text : '');
+				} else {
+					fullMessage = text;
+				}
+
 				vscode.postMessage({
 					type: 'sendMessage',
-					text: text,
+					text: fullMessage,
 					planMode: planModeEnabled,
-					thinkingMode: thinkingModeEnabled
+					thinkingMode: thinkingModeEnabled,
+					contextFiles: Array.from(contextFiles.values())
 				});
 
 				messageInput.value = '';
+				clearAllContext(); // Clear context after sending
 			}
 		}
 
@@ -976,11 +1040,6 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					return;
 				}
 				sendMessage();
-			} else if (e.key === '@' && !e.ctrlKey && !e.metaKey) {
-				// Don't prevent default, let @ be typed first
-				setTimeout(() => {
-					showFilePicker();
-				}, 0);
 			} else if (e.key === 'Escape' && filePickerModal.style.display === 'flex') {
 				e.preventDefault();
 				hideFilePicker();
@@ -1708,6 +1767,14 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		window.switchToFolderMode = switchToFolderMode;
 		window.navigateToRoot = navigateToRoot;
 		window.navigateToPath = navigateToPath;
+
+		// Context file management functions
+		window.removeFromContext = removeFromContext;
+		window.addSelectedFiles = addSelectedFiles;
+		window.cancelFilePicker = cancelFilePicker;
+		window.selectAllFiles = selectAllFiles;
+		window.clearSelection = clearSelection;
+		window.addRootFolder = addRootFolder;
 
 		function showCustomMCPForm() {
 			document.getElementById('mcpCustomModal').style.display = 'flex';
@@ -2703,7 +2770,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					
 				case 'userInput':
 					if (message.data.trim()) {
-						addMessage(parseSimpleMarkdown(message.data), 'user');
+						addMessage(message.data, 'user');
 					}
 					break;
 					
@@ -2795,31 +2862,22 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					break;
 					
 				case 'imagePath':
-					// Handle image file path response
-					if (message.data.filePath) {
-						// Get current cursor position and content
-						const cursorPosition = messageInput.selectionStart || messageInput.value.length;
-						const currentValue = messageInput.value || '';
-						
-						// Insert the file path at the current cursor position
-						const textBefore = currentValue.substring(0, cursorPosition);
-						const textAfter = currentValue.substring(cursorPosition);
-						
-						// Add a space before the path if there's text before and it doesn't end with whitespace
-						const separator = (textBefore && !textBefore.endsWith(' ') && !textBefore.endsWith('\\n')) ? ' ' : '';
-						
-						messageInput.value = textBefore + separator + message.data.filePath + textAfter;
-						
-						// Move cursor to end of inserted path
-						const newCursorPosition = cursorPosition + separator.length + message.data.filePath.length;
-						messageInput.setSelectionRange(newCursorPosition, newCursorPosition);
-						
-						// Focus back on textarea and adjust height
+					// Handle image file path response - add to context as chip
+					// The backend sends 'path' directly, not 'data.filePath'
+					if (message.path) {
+						const imagePath = message.path;
+						const imageName = imagePath.split('/').pop() || imagePath.split('\\\\').pop() || 'image';
+
+						// Add to context with image icon
+						addToContext({
+							path: imagePath,
+							name: imageName,
+							type: 'image',
+							icon: '🖼️'
+						});
+
+						// Focus back on textarea
 						messageInput.focus();
-						adjustTextareaHeight();
-						
-						console.log('Inserted image path:', message.data.filePath);
-						console.log('Full textarea value:', messageInput.value);
 					}
 					break;
 					
@@ -2926,14 +2984,6 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					updateBreadcrumb();
 					break;
 
-				case 'imagePath':
-					// Add the image path to the textarea
-					const currentText = messageInput.value;
-					const pathIndicator = \`@\${message.path} \`;
-					messageInput.value = currentText + pathIndicator;
-					messageInput.focus();
-					adjustTextareaHeight();
-					break;
 					
 				case 'conversationList':
 					displayConversationList(message.data);
@@ -3474,8 +3524,146 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			toggleConversationHistory();
 		}
 
+		// Context file management functions
+		function addToContext(file) {
+			if (!contextFiles.has(file.path)) {
+				contextFiles.set(file.path, {
+					path: file.path,
+					name: file.name || file.path.split('/').pop() || file.path.split('\\\\').pop(),
+					type: file.type || 'file',
+					icon: file.icon || getFileIcon(file.path)
+				});
+				updateContextFilesDisplay();
+			}
+		}
+
+		function removeFromContext(path) {
+			contextFiles.delete(path);
+			selectedContextFiles.delete(path);
+			updateContextFilesDisplay();
+		}
+
+		function updateContextFilesDisplay() {
+			const container = document.getElementById('contextFilesContainer');
+			const list = document.getElementById('contextFilesList');
+
+			if (contextFiles.size === 0) {
+				container.style.display = 'none';
+				return;
+			}
+
+			container.style.display = 'block';
+			list.innerHTML = '';
+
+			contextFiles.forEach((file, path) => {
+				const chip = document.createElement('div');
+				chip.className = 'context-file-chip';
+
+				if (file.type === 'folder') {
+					chip.classList.add('folder');
+				} else if (file.type === 'root') {
+					chip.classList.add('root');
+				} else if (file.type === 'image') {
+					chip.classList.add('image');
+				}
+
+				// Create elements programmatically to avoid escaping issues
+				const iconSpan = document.createElement('span');
+				iconSpan.className = 'file-icon';
+				iconSpan.textContent = file.icon;
+
+				const nameSpan = document.createElement('span');
+				nameSpan.className = 'file-name';
+				nameSpan.title = path;
+				nameSpan.textContent = file.name;
+
+				const removeBtn = document.createElement('button');
+				removeBtn.className = 'remove-btn';
+				removeBtn.title = 'Remove';
+				removeBtn.textContent = '✕';
+				removeBtn.onclick = () => removeFromContext(path);
+
+				chip.appendChild(iconSpan);
+				chip.appendChild(nameSpan);
+				chip.appendChild(removeBtn);
+
+				list.appendChild(chip);
+			});
+		}
+
+		function clearAllContext() {
+			contextFiles.clear();
+			selectedContextFiles.clear();
+			updateContextFilesDisplay();
+		}
+
+		function addSelectedFiles() {
+			selectedContextFiles.forEach(path => {
+				const file = filteredFiles.find(f => f.path === path) ||
+							filteredFolders.find(f => f.path === path);
+				if (file) {
+					addToContext({
+						path: file.path,
+						name: file.name,
+						type: file.isDirectory ? 'folder' : 'file',
+						icon: file.isDirectory ? '📁' : getFileIcon(file.path)
+					});
+				}
+			});
+			selectedContextFiles.clear();
+			hideFilePicker();
+			updateSelectionCount();
+		}
+
+		function cancelFilePicker() {
+			selectedContextFiles.clear();
+			hideFilePicker();
+		}
+
+		function selectAllFiles() {
+			const items = isFileMode ? filteredFiles : filteredFolders;
+			items.forEach(item => {
+				selectedContextFiles.add(item.path);
+			});
+			renderFileList();
+			updateSelectionCount();
+		}
+
+		function clearSelection() {
+			selectedContextFiles.clear();
+			renderFileList();
+			updateSelectionCount();
+		}
+
+		function updateSelectionCount() {
+			const countSpan = document.getElementById('selectionCount');
+			const addBtn = document.getElementById('addSelectedBtn');
+			const count = selectedContextFiles.size;
+
+			if (countSpan) {
+				countSpan.textContent = \`\${count} selected\`;
+			}
+
+			if (addBtn) {
+				addBtn.disabled = count === 0;
+			}
+		}
+
+		function addRootFolder() {
+			addToContext({
+				path: '/',
+				name: 'Project Root',
+				type: 'root',
+				icon: '📦'
+			});
+			hideFilePicker();
+		}
+
 		// File picker functions
 		function showFilePicker() {
+			// Clear previous selections
+			selectedContextFiles.clear();
+
 			// Request initial list from VS Code based on current mode
 			if (isFileMode) {
 				vscode.postMessage({
@@ -3494,12 +3682,14 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			filePickerModal.style.display = 'flex';
 			fileSearchInput.focus();
 			selectedFileIndex = -1;
+			updateSelectionCount();
 		}
 
 		function hideFilePicker() {
 			filePickerModal.style.display = 'none';
 			fileSearchInput.value = '';
 			selectedFileIndex = -1;
+			selectedContextFiles.clear();
 		}
 
 		function getFileIcon(filename) {
@@ -3531,11 +3721,18 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				if (index === selectedFileIndex) {
 					fileItem.classList.add('selected');
 				}
+				if (selectedContextFiles.has(item.path)) {
+					fileItem.classList.add('multi-selected');
+				}
 
 				const icon = isFileMode ? getFileIcon(item.name) : '📁';
 
+				// Add checkbox for multi-select
+				const checkbox = \`<input type="checkbox" \${selectedContextFiles.has(item.path) ? 'checked' : ''} />\`;
+
 				if (isFileMode) {
 					fileItem.innerHTML = \`
+						\${checkbox}
 						<span class="file-icon">\${icon}</span>
 						<div class="file-info">
 							<div class="file-name">\${item.name}</div>
@@ -3545,6 +3742,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				} else {
 					// Folder mode - add navigation button
 					fileItem.innerHTML = \`
+						\${checkbox}
 						<span class="file-icon">\${icon}</span>
 						<div class="file-info">
 							<div class="file-name">\${item.name}</div>
@@ -3558,7 +3756,24 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					\`;
 				}
 
+				const checkboxEl = fileItem.querySelector('input[type="checkbox"]');
+				checkboxEl.addEventListener('change', (e) => {
+					e.stopPropagation();
+					if (e.target.checked) {
+						selectedContextFiles.add(item.path);
+					} else {
+						selectedContextFiles.delete(item.path);
+					}
+					updateSelectionCount();
+					fileItem.classList.toggle('multi-selected', e.target.checked);
+				});
+
 				fileItem.addEventListener('click', (e) => {
+					// Check if checkbox was clicked
+					if (e.target.type === 'checkbox') {
+						return;
+					}
+
 					// Check if the navigation button was clicked
 					if (e.target.closest('.folder-navigate-btn')) {
 						e.stopPropagation();
@@ -3568,37 +3783,27 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 						return;
 					}
 
-					// Main area clicked - select the item
-					if (isFileMode) {
-						selectFile(item);
+					// Toggle checkbox on row click
+					const checkbox = fileItem.querySelector('input[type="checkbox"]');
+					checkbox.checked = !checkbox.checked;
+					if (checkbox.checked) {
+						selectedContextFiles.add(item.path);
 					} else {
-						selectFolder(item);
+						selectedContextFiles.delete(item.path);
 					}
+					updateSelectionCount();
+					fileItem.classList.toggle('multi-selected', checkbox.checked);
 				});
 
 				fileList.appendChild(fileItem);
 			});
+
+			updateSelectionCount();
 		}
 
+		// Legacy function - no longer used with multi-select
 		function selectFile(file) {
-			// Insert file path at cursor position
-			const cursorPos = messageInput.selectionStart;
-			const textBefore = messageInput.value.substring(0, cursorPos);
-			const textAfter = messageInput.value.substring(cursorPos);
-			
-			// Replace the @ symbol with the file path
-			const beforeAt = textBefore.substring(0, textBefore.lastIndexOf('@'));
-			const newText = beforeAt + '@' + file.path + ' ' + textAfter;
-			
-			messageInput.value = newText;
-			messageInput.focus();
-			
-			// Set cursor position after the inserted path
-			const newCursorPos = beforeAt.length + file.path.length + 2;
-			messageInput.setSelectionRange(newCursorPos, newCursorPos);
-			
-			hideFilePicker();
-			adjustTextareaHeight();
+			// This function is deprecated but kept for compatibility
 		}
 
 		function filterFiles(searchTerm) {
@@ -3623,10 +3828,11 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			isFileMode = true;
 			fileModeBtn.classList.add('active');
 			folderModeBtn.classList.remove('active');
-			filePickerTitle.textContent = 'Select File';
+			filePickerTitle.textContent = 'Select Files';
 			fileSearchInput.placeholder = 'Search files...';
 			filePickerBreadcrumb.style.display = 'none';
 			currentFolderPath = '';
+			selectedContextFiles.clear();
 
 			// Request files
 			vscode.postMessage({
@@ -3639,7 +3845,8 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			isFileMode = false;
 			fileModeBtn.classList.remove('active');
 			folderModeBtn.classList.add('active');
-			filePickerTitle.textContent = 'Select Folder';
+			filePickerTitle.textContent = 'Select Folders';
+			selectedContextFiles.clear();
 			fileSearchInput.placeholder = 'Search folders...';
 			filePickerBreadcrumb.style.display = 'flex';
 			currentFolderPath = '';
@@ -3677,25 +3884,9 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			});
 		}
 
+		// Legacy function - no longer used with multi-select
 		function selectFolder(folder) {
-			// Insert folder path with trailing slash to indicate folder reference
-			const cursorPos = messageInput.selectionStart;
-			const textBefore = messageInput.value.substring(0, cursorPos);
-			const textAfter = messageInput.value.substring(cursorPos);
-
-			// Replace the @ symbol with the folder path
-			const beforeAt = textBefore.substring(0, textBefore.lastIndexOf('@'));
-			const newText = beforeAt + '@' + folder.path + '/ ' + textAfter;
-
-			messageInput.value = newText;
-			messageInput.focus();
-
-			// Set cursor position after the inserted path
-			const newCursorPos = beforeAt.length + folder.path.length + 3;
-			messageInput.setSelectionRange(newCursorPos, newCursorPos);
-
-			hideFilePicker();
-			adjustTextareaHeight();
+			// This function is deprecated but kept for compatibility
 		}
 
 		function updateBreadcrumb() {

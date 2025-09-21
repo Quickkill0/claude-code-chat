@@ -89,6 +89,11 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 			</div>
 			<div class="textarea-container">
 				<div class="textarea-wrapper">
+					<div class="context-files-container" id="contextFilesContainer" style="display: none;">
+						<div class="context-files-list" id="contextFilesList">
+							<!-- File chips will be dynamically added here -->
+						</div>
+					</div>
 					<textarea class="input-field" id="messageInput" placeholder="Type your message to Claude Code..." rows="1"></textarea>
 					<div class="input-controls">
 						<div class="left-controls">
@@ -155,13 +160,16 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 		<div class="file-picker-content">
 			<div class="file-picker-header">
 				<div class="file-picker-title-section">
-					<span id="filePickerTitle">Select File</span>
+					<span id="filePickerTitle">Select Files</span>
 					<div class="file-picker-mode-toggle">
 						<button class="mode-toggle-btn active" id="fileModeBtn" onclick="switchToFileMode()">
 							📄 Files
 						</button>
 						<button class="mode-toggle-btn" id="folderModeBtn" onclick="switchToFolderMode()">
 							📁 Folders
+						</button>
+						<button class="mode-toggle-btn" id="rootFolderBtn" onclick="addRootFolder()" title="Add entire project">
+							📦 Add Root
 						</button>
 					</div>
 				</div>
@@ -170,10 +178,23 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 					<span class="breadcrumb-separator">/</span>
 					<span id="currentPath"></span>
 				</div>
+				<div class="file-picker-selection-controls">
+					<div class="selection-info">
+						<span id="selectionCount">0 selected</span>
+					</div>
+					<div class="selection-actions">
+						<button class="btn small" onclick="selectAllFiles()">Select All</button>
+						<button class="btn small" onclick="clearSelection()">Clear</button>
+					</div>
+				</div>
 				<input type="text" id="fileSearchInput" placeholder="Search files..." class="file-search-input">
 			</div>
 			<div id="fileList" class="file-list">
 				<!-- Files will be loaded here -->
+			</div>
+			<div class="file-picker-footer">
+				<button class="btn outlined" onclick="cancelFilePicker()">Cancel</button>
+				<button class="btn primary" id="addSelectedBtn" onclick="addSelectedFiles()" disabled>Add Selected</button>
 			</div>
 		</div>
 	</div>
