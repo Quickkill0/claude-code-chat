@@ -22,7 +22,7 @@ This workflow will:
 The create-mission workflow provides:
 - **Mission Planning** - Breaking tasks into focused, implementable missions
 - **Architecture Design** - Creating detailed technical plans for each mission
-- **Agent Coordination** - Using specialized backend/frontend development agents
+- **Agent Coordination** - Setting up specialized backend/frontend development agents
 - **Progress Tracking** - Establishing clear mission completion criteria
 - **Context Preservation** - Maintaining technical constraints and coding patterns
 
