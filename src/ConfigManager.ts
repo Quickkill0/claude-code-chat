@@ -35,7 +35,27 @@ export class ConfigManager {
 
 			// Create or update mcp-servers.json with permissions server, preserving existing servers
 			const mcpConfigPath = path.join(mcpConfigDir, 'mcp-servers.json');
-			const mcpPermissionsPath = this.convertToWSLPath(path.join(this._extensionUri.fsPath, 'mcp-permissions.js'));
+
+			// Try to find mcp-permissions.js in the correct location
+			let mcpPermissionsJsPath = path.join(this._extensionUri.fsPath, 'mcp-permissions.js');
+
+			// Check if file exists at extension root, if not try extension subdirectory
+			try {
+				await vscode.workspace.fs.stat(vscode.Uri.file(mcpPermissionsJsPath));
+			} catch {
+				// Try in extension subdirectory (for installed VSIX)
+				mcpPermissionsJsPath = path.join(this._extensionUri.fsPath, 'extension', 'mcp-permissions.js');
+				try {
+					await vscode.workspace.fs.stat(vscode.Uri.file(mcpPermissionsJsPath));
+				} catch {
+					console.error('mcp-permissions.js not found in either location');
+					console.error('Tried:', path.join(this._extensionUri.fsPath, 'mcp-permissions.js'));
+					console.error('Tried:', mcpPermissionsJsPath);
+					return;
+				}
+			}
+
+			const mcpPermissionsPath = this.convertToWSLPath(mcpPermissionsJsPath);
 			const permissionRequestsPath = this.convertToWSLPath(path.join(storagePath, 'permission-requests'));
 
 			// Load existing config or create new one
