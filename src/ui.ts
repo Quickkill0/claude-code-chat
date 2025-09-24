@@ -109,6 +109,12 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 									<path d="M1 2.5l3 3 3-3"></path>
 								</svg>
 							</button>
+							<button class="tools-btn" onclick="showAgentsModal()" title="Manage agents">
+								Agents
+								<svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+									<path d="M1 2.5l3 3 3-3"></path>
+								</svg>
+							</button>
 						</div>
 						<div class="right-controls">
 							<button class="slash-btn" onclick="showSlashCommandsModal()" title="Slash commands">/</button>
@@ -325,6 +331,183 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 				<div class="form-buttons">
 					<button class="btn primary" onclick="saveCustomMCPServer()">Add Server</button>
 					<button class="btn outlined" onclick="hideCustomMCPModal()">Cancel</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Agents modal -->
+	<div id="agentsModal" class="tools-modal" style="display: none;">
+		<div class="tools-modal-content agents-modal-content">
+			<div class="tools-modal-header">
+				<span>Agent Manager</span>
+				<button class="tools-close-btn" onclick="hideAgentsModal()">✕</button>
+			</div>
+
+			<!-- Controls -->
+			<div class="agents-controls">
+				<div class="agents-scope-tabs">
+					<button class="agents-scope-tab active" data-scope="both" onclick="switchAgentsScope('both')">All Agents</button>
+					<button class="agents-scope-tab" data-scope="local" onclick="switchAgentsScope('local')">Local</button>
+					<button class="agents-scope-tab" data-scope="user" onclick="switchAgentsScope('user')">User</button>
+				</div>
+			</div>
+
+			<!-- Agents List -->
+			<div class="agents-list" id="agentsList">
+				<!-- Agents will be populated dynamically -->
+			</div>
+
+			<!-- Action buttons -->
+			<div class="agents-actions">
+				<button class="btn primary" onclick="showCreateAgentModal()">
+					<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+						<path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+					</svg>
+					Create Agent
+				</button>
+				<button class="btn outlined" onclick="importAgent()">
+					<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+						<path d="M6 1v6M3 4l3-3 3 3M1 10h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+					</svg>
+					Import
+				</button>
+				<button class="btn outlined" onclick="showAIGenerateModal()">
+					<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+						<path d="M6 2L7 4H10L8 6L9 9L6 7L3 9L4 6L2 4H5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+					</svg>
+					AI Generate
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Create/Edit Agent Modal -->
+	<div id="agentFormModal" class="tools-modal" style="display: none;">
+		<div class="tools-modal-content">
+			<div class="tools-modal-header">
+				<span id="agentFormTitle">Create Agent</span>
+				<button class="tools-close-btn" onclick="hideAgentFormModal()">✕</button>
+			</div>
+			<div class="agent-form">
+				<div class="form-group">
+					<label for="agentName">Agent Name:</label>
+					<input type="text" id="agentName" placeholder="code-reviewer" required>
+					<div class="form-hint">Use lowercase with hyphens (no spaces)</div>
+				</div>
+				<div class="form-group">
+					<label for="agentDescription">Description:</label>
+					<textarea id="agentDescription" placeholder="A brief description of what this agent does..." rows="2" required></textarea>
+				</div>
+				<div class="form-group">
+					<label for="agentScope">Scope:</label>
+					<select id="agentScope">
+						<option value="local">Local (this workspace)</option>
+						<option value="user">User (all workspaces)</option>
+					</select>
+				</div>
+				<div class="form-group">
+					<label for="agentModel">Model (optional):</label>
+					<select id="agentModel">
+						<option value="">Default</option>
+						<option value="opus">Opus</option>
+						<option value="sonnet">Sonnet</option>
+						<option value="haiku">Haiku</option>
+					</select>
+				</div>
+				<div class="form-group">
+					<label for="agentColor">Color (optional):</label>
+					<select id="agentColor">
+						<option value="">None</option>
+						<option value="green">🟢 Green</option>
+						<option value="blue">🔵 Blue</option>
+						<option value="red">🔴 Red</option>
+						<option value="cyan">🟦 Cyan</option>
+						<option value="yellow">🟡 Yellow</option>
+						<option value="purple">🟣 Purple</option>
+						<option value="orange">🟠 Orange</option>
+						<option value="pink">🩷 Pink</option>
+					</select>
+				</div>
+				<div class="form-group">
+					<label for="agentSystemPrompt">System Prompt:</label>
+					<textarea id="agentSystemPrompt" placeholder="You are an expert code reviewer..." rows="8" required></textarea>
+				</div>
+				<div class="form-buttons">
+					<button class="btn primary" onclick="saveAgent()">Save Agent</button>
+					<button class="btn outlined" onclick="hideAgentFormModal()">Cancel</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- AI Generate Agent Modal -->
+	<div id="aiGenerateModal" class="tools-modal" style="display: none;">
+		<div class="tools-modal-content">
+			<div class="tools-modal-header">
+				<span>Generate Agent with AI</span>
+				<button class="tools-close-btn" onclick="hideAIGenerateModal()">✕</button>
+			</div>
+			<div class="ai-generate-form">
+				<div class="form-group">
+					<label for="aiPrompt">Describe the agent you want to create:</label>
+					<textarea id="aiPrompt" placeholder="I need an agent that reviews Python code for security vulnerabilities and suggests improvements..." rows="4" required></textarea>
+				</div>
+				<div class="form-group">
+					<label for="aiAgentScope">Save to:</label>
+					<select id="aiAgentScope">
+						<option value="local">Local (this workspace)</option>
+						<option value="user">User (all workspaces)</option>
+					</select>
+				</div>
+				<div class="form-buttons">
+					<button class="btn primary" onclick="generateAgentWithAI()">Generate Agent</button>
+					<button class="btn outlined" onclick="hideAIGenerateModal()">Cancel</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Delete Confirmation Modal -->
+	<div id="deleteConfirmModal" class="tools-modal" style="display: none;">
+		<div class="tools-modal-content" style="max-width: 400px;">
+			<div class="tools-modal-header">
+				<span>Confirm Delete</span>
+				<button class="tools-close-btn" onclick="hideDeleteConfirmModal()">✕</button>
+			</div>
+			<div class="modal-message" style="padding: 20px;">
+				<p>Are you sure you want to delete the agent "<span id="deleteAgentName"></span>"?</p>
+			</div>
+			<div class="form-buttons">
+				<button class="btn primary" onclick="confirmDeleteAgent()" style="background: #e74c3c;">Delete</button>
+				<button class="btn outlined" onclick="hideDeleteConfirmModal()">Cancel</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Clone Agent Modal -->
+	<div id="cloneAgentModal" class="tools-modal" style="display: none;">
+		<div class="tools-modal-content" style="max-width: 500px;">
+			<div class="tools-modal-header">
+				<span>Clone Agent</span>
+				<button class="tools-close-btn" onclick="hideCloneAgentModal()">✕</button>
+			</div>
+			<div class="clone-agent-form" style="padding: 20px;">
+				<p style="margin-bottom: 15px;">Clone agent "<span id="cloneSourceName"></span>"</p>
+				<div class="form-group">
+					<label for="cloneNewName">New name:</label>
+					<input type="text" id="cloneNewName" placeholder="agent-copy" required>
+				</div>
+				<div class="form-group">
+					<label for="cloneToScope">Clone to:</label>
+					<select id="cloneToScope">
+						<option value="local">Local (this workspace)</option>
+						<option value="user">User (all workspaces)</option>
+					</select>
+				</div>
+				<div class="form-buttons">
+					<button class="btn primary" onclick="confirmCloneAgent()">Clone</button>
+					<button class="btn outlined" onclick="hideCloneAgentModal()">Cancel</button>
 				</div>
 			</div>
 		</div>

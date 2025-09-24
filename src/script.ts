@@ -3030,6 +3030,91 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					mcpInstallingServers.delete(message.data.name || 'unknown');
 					showNotification('Error with MCP server: ' + message.data.error, 'error');
 					break;
+				case 'agentsList':
+					agentsData = message.agents || [];
+					displayAgents();
+					break;
+				case 'agentDetails':
+					if (message.agent && currentEditingAgent) {
+						document.getElementById('agentFormTitle').textContent = 'Edit Agent';
+						document.getElementById('agentName').value = message.agent.metadata.name;
+						document.getElementById('agentDescription').value = message.agent.metadata.description;
+						document.getElementById('agentScope').value = message.agent.scope;
+						document.getElementById('agentModel').value = message.agent.metadata.model || '';
+						document.getElementById('agentColor').value = message.agent.metadata.color || '';
+						document.getElementById('agentSystemPrompt').value = message.agent.systemPrompt;
+						document.getElementById('agentFormModal').style.display = 'flex';
+					}
+					break;
+				case 'agentCreated':
+					hideAgentFormModal();
+					loadAgents();
+					showNotification('Agent created successfully', 'success');
+					break;
+				case 'agentUpdated':
+					hideAgentFormModal();
+					loadAgents();
+					showNotification('Agent updated successfully', 'success');
+					break;
+				case 'agentDeleted':
+					loadAgents();
+					showNotification('Agent deleted successfully', 'success');
+					break;
+				case 'agentCloned':
+					loadAgents();
+					showNotification('Agent cloned successfully', 'success');
+					break;
+				case 'agentExported':
+					if (message.success) {
+						showNotification('Agent exported successfully', 'success');
+					}
+					break;
+				case 'agentImported':
+					loadAgents();
+					showNotification('Agent imported successfully', 'success');
+					break;
+				case 'agentGenerationStarted':
+					showNotification('Generating agent with AI... Please wait for the response in chat', 'info');
+					break;
+				case 'agentsSearchResults':
+					agentsData = message.agents || [];
+					displayAgents();
+					break;
+				case 'agentError':
+					showNotification(message.error || 'Agent operation failed', 'error');
+					// Reset the generate button if it was generating
+					const generateBtn = document.querySelector('#aiGenerateModal button.primary');
+					if (generateBtn && generateBtn.disabled) {
+						generateBtn.disabled = false;
+						generateBtn.textContent = 'Generate Agent';
+					}
+					break;
+				case 'agentGenerated':
+					// Reset the generate button
+					const genBtn = document.querySelector('#aiGenerateModal button.primary');
+					if (genBtn) {
+						genBtn.disabled = false;
+						genBtn.textContent = 'Generate Agent';
+					}
+
+					// Automatically populate the form with generated agent
+					if (message.agent) {
+						// Hide the AI generation modal first
+						hideAIGenerateModal();
+
+						// Now show the edit form with the generated agent
+						document.getElementById('agentFormTitle').textContent = 'Save Generated Agent';
+						document.getElementById('agentName').value = message.agent.metadata.name || '';
+						document.getElementById('agentDescription').value = message.agent.metadata.description || '';
+						document.getElementById('agentScope').value = message.agent.scope || 'user';
+						document.getElementById('agentModel').value = message.agent.metadata.model || '';
+						document.getElementById('agentColor').value = message.agent.metadata.color || '';
+						document.getElementById('agentSystemPrompt').value = message.agent.systemPrompt || '';
+						document.getElementById('agentFormModal').style.display = 'flex';
+
+						showNotification('Agent generated! Review and save it.', 'success');
+					}
+					break;
 			}
 		});
 		
@@ -4049,6 +4134,334 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			}
 			document.getElementById('settingsModal').style.display = 'none';
 		}
+
+		// Agent Manager Functions
+		let agentsData = [];
+		let currentAgentsScope = 'both';
+		let agentsSearchQuery = '';
+		let currentEditingAgent = null;
+
+		function showAgentsModal() {
+			document.getElementById('agentsModal').style.display = 'flex';
+			currentAgentsScope = 'both';
+			agentsSearchQuery = '';
+			loadAgents();
+		}
+
+		function hideAgentsModal() {
+			document.getElementById('agentsModal').style.display = 'none';
+		}
+
+		function switchAgentsScope(scope) {
+			currentAgentsScope = scope;
+			document.querySelectorAll('.agents-scope-tab').forEach(tab => {
+				tab.classList.toggle('active', tab.getAttribute('data-scope') === scope);
+			});
+			loadAgents();
+		}
+
+		function filterAgents() {
+			agentsSearchQuery = document.getElementById('agentsSearchInput').value.toLowerCase();
+			displayAgents();
+		}
+
+		function loadAgents() {
+			vscode.postMessage({ type: 'getAgents', scope: currentAgentsScope });
+		}
+
+		function displayAgents() {
+			const agentsList = document.getElementById('agentsList');
+
+			let filteredAgents = agentsData.filter(agent => {
+				if (agentsSearchQuery) {
+					const searchLower = agentsSearchQuery.toLowerCase();
+					return agent.metadata.name.toLowerCase().includes(searchLower) ||
+						agent.metadata.description.toLowerCase().includes(searchLower);
+				}
+				return true;
+			});
+
+			if (filteredAgents.length === 0) {
+				agentsList.innerHTML = \`
+					<div class="agents-empty">
+						<div class="agents-empty-icon">🤖</div>
+						<div>No agents found</div>
+					</div>
+				\`;
+				return;
+			}
+
+			agentsList.innerHTML = filteredAgents.map(agent => {
+				// Escape single quotes in the name and scope to prevent breaking onclick handlers
+				const escapedName = agent.metadata.name.replace(/'/g, "\\\\'");
+				const escapedScope = agent.scope.replace(/'/g, "\\\\'");
+
+				return \`
+					<div class="agent-card" onclick="window.editAgent('\${escapedName}', '\${escapedScope}')">
+						\${agent.metadata.color ? \`<div class="agent-color-indicator agent-color-\${agent.metadata.color}"></div>\` : ''}
+						<div class="agent-info">
+							<div class="agent-name">\${agent.metadata.name}</div>
+							<div class="agent-description">\${agent.metadata.description}</div>
+							<div class="agent-meta">
+								<span class="agent-badge">\${agent.scope}</span>
+								\${agent.metadata.model ? \`<span class="agent-badge">\${agent.metadata.model}</span>\` : ''}
+							</div>
+						</div>
+						<div class="agent-actions-inline">
+							<button class="agent-action-btn" onclick="event.stopPropagation(); window.cloneAgent('\${escapedName}', '\${escapedScope}')">Clone</button>
+							<button class="agent-action-btn" onclick="event.stopPropagation(); window.exportAgent('\${escapedName}', '\${escapedScope}')">Export</button>
+							<button class="agent-action-btn" onclick="event.stopPropagation(); window.deleteAgent('\${escapedName}', '\${escapedScope}')">Delete</button>
+						</div>
+					</div>
+				\`;
+			}).join('');
+		}
+
+		function showCreateAgentModal() {
+			currentEditingAgent = null;
+			document.getElementById('agentFormTitle').textContent = 'Create Agent';
+			document.getElementById('agentName').value = '';
+			document.getElementById('agentDescription').value = '';
+			document.getElementById('agentScope').value = 'local';
+			document.getElementById('agentModel').value = '';
+			document.getElementById('agentColor').value = '';
+			document.getElementById('agentSystemPrompt').value = '';
+			document.getElementById('agentFormModal').style.display = 'flex';
+		}
+
+		function hideAgentFormModal() {
+			document.getElementById('agentFormModal').style.display = 'none';
+			currentEditingAgent = null;
+			// Clear validation errors
+			document.getElementById('agentName').style.borderColor = '';
+			document.getElementById('agentDescription').style.borderColor = '';
+			document.getElementById('agentSystemPrompt').style.borderColor = '';
+		}
+
+		function editAgent(name, scope) {
+			currentEditingAgent = { name, scope };
+			vscode.postMessage({ type: 'getAgent', name, scope });
+		}
+
+		function saveAgent() {
+			const name = document.getElementById('agentName').value.trim();
+			const description = document.getElementById('agentDescription').value.trim();
+			const scope = document.getElementById('agentScope').value;
+			const model = document.getElementById('agentModel').value;
+			const color = document.getElementById('agentColor').value;
+			const systemPrompt = document.getElementById('agentSystemPrompt').value.trim();
+
+			// Validate required fields
+			let hasError = false;
+			if (!name) {
+				document.getElementById('agentName').style.borderColor = '#e74c3c';
+				hasError = true;
+			} else {
+				document.getElementById('agentName').style.borderColor = '';
+			}
+
+			if (!description) {
+				document.getElementById('agentDescription').style.borderColor = '#e74c3c';
+				hasError = true;
+			} else {
+				document.getElementById('agentDescription').style.borderColor = '';
+			}
+
+			if (!systemPrompt) {
+				document.getElementById('agentSystemPrompt').style.borderColor = '#e74c3c';
+				hasError = true;
+			} else {
+				document.getElementById('agentSystemPrompt').style.borderColor = '';
+			}
+
+			if (hasError) {
+				showNotification('Please fill in all required fields', 'error');
+				return;
+			}
+
+			const agent = {
+				metadata: {
+					name,
+					description,
+					...(model && { model }),
+					...(color && { color })
+				},
+				systemPrompt,
+				scope
+			};
+
+			if (currentEditingAgent) {
+				vscode.postMessage({
+					type: 'updateAgent',
+					name: currentEditingAgent.name,
+					scope: currentEditingAgent.scope,
+					updates: agent
+				});
+			} else {
+				vscode.postMessage({
+					type: 'createAgent',
+					agent,
+					overwrite: false
+				});
+			}
+		}
+
+		// Store delete agent data
+		let pendingDeleteAgent = null;
+		let pendingCloneAgent = null;
+
+		function deleteAgent(name, scope) {
+			// Store the agent to delete and show modal
+			pendingDeleteAgent = { name, scope };
+			document.getElementById('deleteAgentName').textContent = name;
+			document.getElementById('deleteConfirmModal').style.display = 'flex';
+		}
+
+		function confirmDeleteAgent() {
+			if (pendingDeleteAgent) {
+				vscode.postMessage({
+					type: 'deleteAgent',
+					name: pendingDeleteAgent.name,
+					scope: pendingDeleteAgent.scope
+				});
+				pendingDeleteAgent = null;
+			}
+			hideDeleteConfirmModal();
+		}
+
+		function hideDeleteConfirmModal() {
+			document.getElementById('deleteConfirmModal').style.display = 'none';
+			pendingDeleteAgent = null;
+		}
+
+		function cloneAgent(name, fromScope) {
+			// Store the agent to clone and show modal
+			pendingCloneAgent = { name, fromScope };
+			document.getElementById('cloneSourceName').textContent = name;
+			document.getElementById('cloneNewName').value = \`\${name}-copy\`;
+			document.getElementById('cloneToScope').value = fromScope === 'local' ? 'user' : 'local';
+			document.getElementById('cloneAgentModal').style.display = 'flex';
+		}
+
+		function confirmCloneAgent() {
+			if (pendingCloneAgent) {
+				const newName = document.getElementById('cloneNewName').value.trim();
+				const toScope = document.getElementById('cloneToScope').value;
+
+				if (newName) {
+					vscode.postMessage({
+						type: 'cloneAgent',
+						name: pendingCloneAgent.name,
+						fromScope: pendingCloneAgent.fromScope,
+						toScope,
+						newName
+					});
+					pendingCloneAgent = null;
+					hideCloneAgentModal();
+				}
+			}
+		}
+
+		function hideCloneAgentModal() {
+			document.getElementById('cloneAgentModal').style.display = 'none';
+			pendingCloneAgent = null;
+		}
+
+		function exportAgent(name, scope) {
+			vscode.postMessage({ type: 'exportAgent', name, scope });
+		}
+
+		function importAgent() {
+			vscode.postMessage({ type: 'importAgent', scope: 'user', overwrite: false });
+		}
+
+		function showAIGenerateModal() {
+			document.getElementById('aiPrompt').value = '';
+			document.getElementById('aiAgentScope').value = 'local';
+			document.getElementById('aiGenerateModal').style.display = 'flex';
+		}
+
+		function hideAIGenerateModal() {
+			document.getElementById('aiGenerateModal').style.display = 'none';
+			// Reset the generate button state
+			const generateBtn = document.querySelector('#aiGenerateModal button.primary');
+			if (generateBtn) {
+				generateBtn.disabled = false;
+				generateBtn.textContent = 'Generate Agent';
+			}
+			// Clear the prompt
+			document.getElementById('aiPrompt').value = '';
+			document.getElementById('aiPrompt').style.borderColor = '';
+		}
+
+		function generateAgentWithAI() {
+			const prompt = document.getElementById('aiPrompt').value.trim();
+			const scope = document.getElementById('aiAgentScope').value;
+
+			if (!prompt) {
+				// Show error message in the modal instead of alert
+				const promptTextarea = document.getElementById('aiPrompt');
+				promptTextarea.style.borderColor = '#e74c3c';
+				promptTextarea.focus();
+				return;
+			}
+
+			// Show loading state in the modal
+			const generateBtn = document.querySelector('#aiGenerateModal button.primary');
+			const originalText = generateBtn.textContent;
+			generateBtn.disabled = true;
+			generateBtn.textContent = 'Generating...';
+
+			// Send the generation request
+			vscode.postMessage({
+				type: 'generateAgentWithAI',
+				prompt,
+				scope
+			});
+
+			// Don't hide the modal yet - wait for response
+			// The modal will be hidden when we receive agentGenerated or agentError message
+		}
+
+		// Close modals when clicking outside
+		document.getElementById('agentsModal').addEventListener('click', (e) => {
+			if (e.target === document.getElementById('agentsModal')) {
+				hideAgentsModal();
+			}
+		});
+
+		document.getElementById('agentFormModal').addEventListener('click', (e) => {
+			if (e.target === document.getElementById('agentFormModal')) {
+				hideAgentFormModal();
+			}
+		});
+
+		document.getElementById('aiGenerateModal').addEventListener('click', (e) => {
+			if (e.target === document.getElementById('aiGenerateModal')) {
+				hideAIGenerateModal();
+			}
+		});
+
+		// Make agent functions available globally
+		window.showAgentsModal = showAgentsModal;
+		window.hideAgentsModal = hideAgentsModal;
+		window.switchAgentsScope = switchAgentsScope;
+		window.filterAgents = filterAgents;
+		window.showCreateAgentModal = showCreateAgentModal;
+		window.hideAgentFormModal = hideAgentFormModal;
+		window.editAgent = editAgent;
+		window.saveAgent = saveAgent;
+		window.deleteAgent = deleteAgent;
+		window.confirmDeleteAgent = confirmDeleteAgent;
+		window.hideDeleteConfirmModal = hideDeleteConfirmModal;
+		window.cloneAgent = cloneAgent;
+		window.confirmCloneAgent = confirmCloneAgent;
+		window.hideCloneAgentModal = hideCloneAgentModal;
+		window.exportAgent = exportAgent;
+		window.importAgent = importAgent;
+		window.showAIGenerateModal = showAIGenerateModal;
+		window.hideAIGenerateModal = hideAIGenerateModal;
+		window.generateAgentWithAI = generateAgentWithAI;
 
 		function updateSettings() {
 			// Note: thinking intensity is now handled separately in the thinking intensity modal

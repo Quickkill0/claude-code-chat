@@ -3916,6 +3916,250 @@ const styles = `
         font-size: 13px;
         line-height: 1.5;
     }
+
+    /* Agent Manager styles */
+    .agents-modal-content {
+        width: 800px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .agents-controls {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--vscode-panel-border);
+    }
+
+    .agents-scope-tabs {
+        display: flex;
+        gap: 8px;
+    }
+
+    .agents-scope-tab {
+        flex: 1;
+        padding: 6px 12px;
+        background: transparent;
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 4px;
+        color: var(--vscode-foreground);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .agents-scope-tab.active {
+        background: var(--vscode-button-background);
+        color: var(--vscode-button-foreground);
+        border-color: var(--vscode-button-background);
+    }
+
+    .agents-scope-tab:hover:not(.active) {
+        background: var(--vscode-list-hoverBackground);
+    }
+
+    .agents-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 20px;
+        min-height: 200px;
+        max-height: 400px;
+    }
+
+    .agent-card {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        margin-bottom: 8px;
+        background: var(--vscode-editor-background);
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .agent-card:hover {
+        background: var(--vscode-list-hoverBackground);
+        transform: translateX(2px);
+    }
+
+    .agent-color-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 12px;
+        flex-shrink: 0;
+    }
+
+    .agent-color-green { background: #28a745; }
+    .agent-color-blue { background: #007bff; }
+    .agent-color-red { background: #dc3545; }
+    .agent-color-cyan { background: #17a2b8; }
+    .agent-color-yellow { background: #ffc107; }
+    .agent-color-purple { background: #6f42c1; }
+    .agent-color-orange { background: #fd7e14; }
+    .agent-color-pink { background: #e83e8c; }
+
+    .agent-info {
+        flex: 1;
+    }
+
+    .agent-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--vscode-foreground);
+        margin-bottom: 2px;
+    }
+
+    .agent-description {
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+        opacity: 0.9;
+    }
+
+    .agent-meta {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .agent-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+        background: var(--vscode-badge-background);
+        color: var(--vscode-badge-foreground);
+        border-radius: 3px;
+    }
+
+    .agent-actions-inline {
+        display: flex;
+        gap: 4px;
+        margin-left: 12px;
+    }
+
+    .agent-action-btn {
+        padding: 4px 8px;
+        background: transparent;
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 4px;
+        color: var(--vscode-foreground);
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .agent-action-btn:hover {
+        background: var(--vscode-button-background);
+        color: var(--vscode-button-foreground);
+        border-color: var(--vscode-button-background);
+    }
+
+    .agents-actions {
+        padding: 16px 20px;
+        border-top: 1px solid var(--vscode-panel-border);
+        display: flex;
+        gap: 8px;
+    }
+
+    .agents-empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--vscode-descriptionForeground);
+    }
+
+    .agents-empty-icon {
+        font-size: 48px;
+        opacity: 0.3;
+        margin-bottom: 16px;
+    }
+
+    /* Agent Form styles */
+    .agent-form {
+        padding: 20px;
+    }
+
+    .agent-form .form-group {
+        margin-bottom: 16px;
+    }
+
+    .agent-form label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--vscode-foreground);
+    }
+
+    .agent-form input,
+    .agent-form select,
+    .agent-form textarea {
+        width: 100%;
+        padding: 8px 12px;
+        background: var(--vscode-input-background);
+        border: 1px solid var(--vscode-input-border);
+        border-radius: 4px;
+        color: var(--vscode-input-foreground);
+        font-size: 13px;
+        font-family: inherit;
+    }
+
+    .agent-form input:focus,
+    .agent-form select:focus,
+    .agent-form textarea:focus {
+        outline: none;
+        border-color: var(--vscode-focusBorder);
+    }
+
+    .agent-form textarea {
+        resize: vertical;
+        font-family: 'Cascadia Code', 'Courier New', monospace;
+    }
+
+    .form-hint {
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+        margin-top: 4px;
+        opacity: 0.8;
+    }
+
+    /* AI Generate Form styles */
+    .ai-generate-form {
+        padding: 20px;
+    }
+
+    .ai-generate-form .form-group {
+        margin-bottom: 16px;
+    }
+
+    .ai-generate-form label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--vscode-foreground);
+    }
+
+    .ai-generate-form textarea,
+    .ai-generate-form select {
+        width: 100%;
+        padding: 8px 12px;
+        background: var(--vscode-input-background);
+        border: 1px solid var(--vscode-input-border);
+        border-radius: 4px;
+        color: var(--vscode-input-foreground);
+        font-size: 13px;
+        font-family: inherit;
+    }
+
+    .ai-generate-form textarea:focus,
+    .ai-generate-form select:focus {
+        outline: none;
+        border-color: var(--vscode-focusBorder);
+    }
+
+    .ai-generate-form textarea {
+        resize: vertical;
+    }
 </style>`;
 
 export default styles;

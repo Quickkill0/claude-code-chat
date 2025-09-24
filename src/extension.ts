@@ -8,6 +8,8 @@ import { PermissionManager, PermissionRequest } from './PermissionManager';
 import { BackupManager, CommitInfo } from './BackupManager';
 import { ConfigManager } from './ConfigManager';
 import { MessageHandler } from './MessageHandler';
+import { AgentManager } from './AgentManager';
+import * as yaml from 'js-yaml';
 
 export function activate(context: vscode.ExtensionContext) {
 	console.log('Claude Code Chat extension is being activated!');
@@ -98,6 +100,7 @@ class ClaudeChatProvider {
 	private _backupManager: BackupManager;
 	private _configManager: ConfigManager;
 	private _messageHandler: MessageHandler;
+	private _agentManager: AgentManager;
 
 	constructor(
 		private readonly _extensionUri: vscode.Uri,
@@ -126,6 +129,8 @@ class ClaudeChatProvider {
 		);
 
 		this._configManager = new ConfigManager(this._context, this._extensionUri);
+
+		this._agentManager = new AgentManager(this._context);
 
 		this._messageHandler = new MessageHandler(
 			(message) => this._sendAndSaveMessage(message),
@@ -329,6 +334,36 @@ class ClaudeChatProvider {
 				return;
 			case 'saveClaudeMd':
 				this._saveClaudeMd(message.content);
+				return;
+			case 'getAgents':
+				this._getAgents(message.scope);
+				return;
+			case 'getAgent':
+				this._getAgent(message.name, message.scope);
+				return;
+			case 'createAgent':
+				this._createAgent(message.agent, message.overwrite);
+				return;
+			case 'updateAgent':
+				this._updateAgent(message.name, message.scope, message.updates);
+				return;
+			case 'deleteAgent':
+				this._deleteAgent(message.name, message.scope);
+				return;
+			case 'cloneAgent':
+				this._cloneAgent(message.name, message.fromScope, message.toScope, message.newName);
+				return;
+			case 'searchAgents':
+				this._searchAgents(message.query, message.scope);
+				return;
+			case 'exportAgent':
+				this._exportAgent(message.name, message.scope);
+				return;
+			case 'importAgent':
+				this._importAgent(message.content, message.scope, message.overwrite);
+				return;
+			case 'generateAgentWithAI':
+				this._generateAgentWithAI(message.prompt, message.scope);
 				return;
 		}
 	}
@@ -1353,6 +1388,355 @@ class ClaudeChatProvider {
 				data: 'Failed to save CLAUDE.md file'
 			});
 		}
+	}
+
+	// Agent-related methods
+	private async _getAgents(scope: 'local' | 'user' | 'both'): Promise<void> {
+		try {
+			const agents = await this._agentManager.listAgents(scope);
+			this._postMessage({
+				type: 'agentsList',
+				agents: agents
+			});
+		} catch (error) {
+			this._postMessage({
+				type: 'agentError',
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}
+
+	private async _getAgent(name: string, scope: 'local' | 'user'): Promise<void> {
+		try {
+			const agent = await this._agentManager.getAgent(name, scope);
+			this._postMessage({
+				type: 'agentDetails',
+				agent: agent
+			});
+		} catch (error) {
+			this._postMessage({
+				type: 'agentError',
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}
+
+	private async _createAgent(agent: any, overwrite: boolean): Promise<void> {
+		try {
+			const created = await this._agentManager.createAgent(agent, overwrite);
+			this._postMessage({
+				type: 'agentCreated',
+				agent: created
+			});
+		} catch (error) {
+			this._postMessage({
+				type: 'agentError',
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}
+
+	private async _updateAgent(name: string, scope: 'local' | 'user', updates: any): Promise<void> {
+		try {
+			const updated = await this._agentManager.updateAgent(name, scope, updates);
+			this._postMessage({
+				type: 'agentUpdated',
+				agent: updated
+			});
+		} catch (error) {
+			this._postMessage({
+				type: 'agentError',
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}
+
+	private async _deleteAgent(name: string, scope: 'local' | 'user'): Promise<void> {
+		try {
+			const deleted = await this._agentManager.deleteAgent(name, scope);
+			this._postMessage({
+				type: 'agentDeleted',
+				success: deleted,
+				name: name,
+				scope: scope
+			});
+		} catch (error) {
+			this._postMessage({
+				type: 'agentError',
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}
+
+	private async _cloneAgent(name: string, fromScope: 'local' | 'user', toScope: 'local' | 'user', newName?: string): Promise<void> {
+		try {
+			const cloned = await this._agentManager.cloneAgent(name, fromScope, toScope, newName);
+			this._postMessage({
+				type: 'agentCloned',
+				agent: cloned
+			});
+		} catch (error) {
+			this._postMessage({
+				type: 'agentError',
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}
+
+	private async _searchAgents(query: string, scope: 'local' | 'user' | 'both'): Promise<void> {
+		try {
+			const agents = await this._agentManager.searchAgents(query, scope);
+			this._postMessage({
+				type: 'agentsSearchResults',
+				agents: agents
+			});
+		} catch (error) {
+			this._postMessage({
+				type: 'agentError',
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}
+
+	private async _exportAgent(name: string, scope: 'local' | 'user'): Promise<void> {
+		try {
+			const content = await this._agentManager.exportAgent(name, scope);
+
+			// Show save dialog
+			const uri = await vscode.window.showSaveDialog({
+				defaultUri: vscode.Uri.file(`${name}.md`),
+				filters: {
+					'Markdown': ['md'],
+					'All Files': ['*']
+				}
+			});
+
+			if (uri) {
+				await vscode.workspace.fs.writeFile(uri, Buffer.from(content));
+				this._postMessage({
+					type: 'agentExported',
+					success: true,
+					path: uri.fsPath
+				});
+			}
+		} catch (error) {
+			this._postMessage({
+				type: 'agentError',
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}
+
+	private async _importAgent(content: string | undefined, scope: 'local' | 'user', overwrite: boolean): Promise<void> {
+		try {
+			let agentContent = content;
+
+			// If no content provided, show file picker
+			if (!agentContent) {
+				const uri = await vscode.window.showOpenDialog({
+					canSelectFiles: true,
+					canSelectFolders: false,
+					canSelectMany: false,
+					filters: {
+						'Markdown': ['md'],
+						'All Files': ['*']
+					}
+				});
+
+				if (uri && uri[0]) {
+					const fileContent = await vscode.workspace.fs.readFile(uri[0]);
+					agentContent = Buffer.from(fileContent).toString('utf-8');
+				} else {
+					return;
+				}
+			}
+
+			const imported = await this._agentManager.importAgent(agentContent, scope, overwrite);
+			this._postMessage({
+				type: 'agentImported',
+				agent: imported
+			});
+		} catch (error) {
+			this._postMessage({
+				type: 'agentError',
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}
+
+	private async _generateAgentWithAI(prompt: string, scope: 'local' | 'user'): Promise<void> {
+		try {
+			// Notify UI that generation has started
+			this._postMessage({
+				type: 'agentGenerationStarted',
+				prompt: prompt
+			});
+
+			// Create the prompt for Claude to generate the agent
+			const aiPrompt = `Generate a Claude Code agent based on this request: "${prompt}"
+
+Please create an agent in YAML frontmatter format with:
+- name: A short, descriptive name (no spaces, use hyphens)
+- description: A clear description of what the agent does
+- model: Choose from opus, sonnet, or haiku (optional, based on complexity needs)
+- color: Choose from green, blue, red, cyan, yellow, purple, orange, pink (optional)
+
+Followed by the system prompt that defines the agent's behavior.
+
+IMPORTANT: Return ONLY the agent definition in this exact format, nothing else:
+
+\`\`\`yaml
+---
+name: agent-name-here
+description: Clear description here
+model: opus
+color: blue
+---
+
+Your detailed system prompt here...
+\`\`\``;
+
+			// Create a separate Claude process for agent generation
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+			const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
+
+			// Create args for claude command - use simple mode without tools
+			const args = ['-p', '--dangerously-skip-permissions'];
+
+			// Create the Claude process
+			const claudeProcess = this._sessionManager.createClaudeProcess(args, aiPrompt, cwd);
+
+			let fullResponse = '';
+
+			// Handle stdout data
+			if (claudeProcess.stdout) {
+				claudeProcess.stdout.on('data', (data: Buffer) => {
+					fullResponse += data.toString();
+				});
+			}
+
+			// Handle stderr data for debugging
+			if (claudeProcess.stderr) {
+				claudeProcess.stderr.on('data', (data: Buffer) => {
+					console.error('Agent generation stderr:', data.toString());
+				});
+			}
+
+			// Handle process completion
+			claudeProcess.on('close', (code) => {
+				if (code === 0) {
+					// Parse the generated agent from the response
+					const agentData = this._parseGeneratedAgent(fullResponse);
+					if (agentData) {
+						// Send the parsed agent to the UI form
+						this._postMessage({
+							type: 'agentGenerated',
+							agent: {
+								...agentData,
+								scope
+							}
+						});
+					} else {
+						this._postMessage({
+							type: 'agentError',
+							error: 'Failed to parse generated agent. Please try again with a clearer description.'
+						});
+					}
+				} else {
+					this._postMessage({
+						type: 'agentError',
+						error: 'Agent generation failed. Please try again.'
+					});
+				}
+			});
+
+			// Handle errors
+			claudeProcess.on('error', (error) => {
+				console.error('Agent generation process error:', error);
+				this._postMessage({
+					type: 'agentError',
+					error: error.message || 'Failed to generate agent'
+				});
+			});
+
+			// Note: createClaudeProcess already handles sending the prompt internally
+			// so we don't need to write to stdin here
+
+		} catch (error) {
+			this._postMessage({
+				type: 'agentError',
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}
+
+	private _parseGeneratedAgent(text: string): any {
+		// Look for YAML frontmatter pattern in the text
+		// Check for code blocks with yaml
+		const codeBlockRegex = /```(?:yaml|yml)?\n(---\n[\s\S]*?---\n[\s\S]*?)```/;
+		const match = text.match(codeBlockRegex);
+
+		if (match) {
+			try {
+				const agentContent = match[1];
+				// Parse the frontmatter
+				const frontmatterEndIndex = agentContent.indexOf('\n---', 4);
+				if (frontmatterEndIndex === -1) {
+					return null;
+				}
+
+				const yamlContent = agentContent.substring(4, frontmatterEndIndex).trim();
+				const systemPrompt = agentContent.substring(frontmatterEndIndex + 4).trim();
+
+				// Parse YAML
+				const metadata = yaml.load(yamlContent) as any;
+
+				if (metadata && metadata.name && metadata.description) {
+					return {
+						metadata: {
+							name: metadata.name,
+							description: metadata.description,
+							model: metadata.model,
+							color: metadata.color,
+							tools: metadata.tools
+						},
+						systemPrompt: systemPrompt
+					};
+				}
+			} catch (error) {
+				console.error('Failed to parse generated agent:', error);
+			}
+		}
+
+		// Also check for plain frontmatter without code block
+		const plainRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/m;
+		const plainMatch = text.match(plainRegex);
+
+		if (plainMatch) {
+			try {
+				const yamlContent = plainMatch[1];
+				const systemPrompt = plainMatch[2];
+
+				const metadata = yaml.load(yamlContent) as any;
+
+				if (metadata && metadata.name && metadata.description) {
+					return {
+						metadata: {
+							name: metadata.name,
+							description: metadata.description,
+							model: metadata.model,
+							color: metadata.color,
+							tools: metadata.tools
+						},
+						systemPrompt: systemPrompt
+					};
+				}
+			} catch (error) {
+				console.error('Failed to parse generated agent:', error);
+			}
+		}
+
+		return null;
 	}
 
 	private _getHtmlForWebview(): string {
