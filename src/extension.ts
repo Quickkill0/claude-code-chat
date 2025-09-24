@@ -231,7 +231,7 @@ class ClaudeChatProvider {
 	private _handleWebviewMessage(message: any) {
 		switch (message.type) {
 			case 'sendMessage':
-				this._sendMessageToClaude(message.text, message.planMode, message.thinkingMode);
+				this._sendMessageToClaude(message.text, message.conversationMode, message.thinkingMode);
 				return;
 			case 'newSession':
 				this._newSession();
@@ -432,7 +432,7 @@ class ClaudeChatProvider {
 		}
 	}
 
-	private async _sendMessageToClaude(message: string, planMode?: boolean, thinkingMode?: boolean) {
+	private async _sendMessageToClaude(message: string, conversationMode?: string, thinkingMode?: boolean) {
 		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
 		const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
 
@@ -442,8 +442,10 @@ class ClaudeChatProvider {
 
 		// Prepend mode instructions if enabled
 		let actualMessage = message;
-		if (planMode) {
-			actualMessage = 'PLAN FIRST FOR THIS MESSAGE ONLY: Plan first before making any changes. Show me in detail what you will change and wait for my explicit approval in a separate message before proceeding. Do not implement anything until I confirm. This planning requirement applies ONLY to this current message. \n\n' + message;
+		if (conversationMode === 'plan') {
+			actualMessage = 'PLAN MODE: Plan first before making any changes. Show me in detail what you will change and wait for my explicit approval in a separate message before proceeding. Do not implement anything until I confirm. If user wants to change or modify the plan just iterate and modify plan to user specifications then show me in detail what you will change and wait for my explicit approval in a separate message before proceeding. If user apporoves a plan respond with a generated prompt for user to paste into new chat window to proceed with implementation. \n\n' + message;
+		} else if (conversationMode === 'chat') {
+			actualMessage = 'CHAT MODE: Respond to this message in a conversational manner. Do not implement any code, make changes to files, or create any new files. You may only reasearch files or external sources like the web to answer user questions. Focus on discussion, explanation, and answering questions only. If the user asks for implementation, politely tell them you cannot modify files in Chat Mode and offer to explain what would need to be done instead. \n\n' + message;
 		}
 		if (thinkingMode) {
 			let thinkingPrompt = '';

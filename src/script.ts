@@ -21,9 +21,12 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		let isFileMode = true; // true for files, false for folders
 		let currentFolderPath = '';
 		let filteredFolders = [];
-		let planModeEnabled = false;
 		let thinkingModeEnabled = false;
 		let yoloModeEnabled = false;
+
+		// Mode selection system
+		let currentConversationMode = 'default'; // 'default', 'chat', 'plan'
+		let pendingModeSelection = null;
 
 		// Context file management
 		let selectedContextFiles = new Set();
@@ -808,7 +811,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				vscode.postMessage({
 					type: 'sendMessage',
 					text: fullMessage,
-					planMode: planModeEnabled,
+					conversationMode: currentConversationMode,
 					thinkingMode: thinkingModeEnabled,
 					contextFiles: Array.from(contextFiles.values())
 				});
@@ -818,13 +821,170 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			}
 		}
 
-		function togglePlanMode() {
-			planModeEnabled = !planModeEnabled;
-			const switchElement = document.getElementById('planModeSwitch');
-			if (planModeEnabled) {
-				switchElement.classList.add('active');
+		// Mode Selection Functions
+		function showModeSelectionModal() {
+			const modal = document.getElementById('modeSelectionModal');
+			if (modal) {
+				modal.style.display = 'flex';
+				updateModeSelectionRadios();
+
+				const content = modal.querySelector('.tools-modal-content');
+				if (content) {
+					content.classList.remove('closing');
+				}
+
+				setTimeout(() => {
+					const firstOption = modal.querySelector('.mode-option');
+					if (firstOption) {
+						firstOption.focus();
+					}
+				}, 100);
+
+				document.addEventListener('keydown', handleModeSelectionEscape);
+				modal.addEventListener('click', handleModeSelectionClickOutside);
+			}
+		}
+
+		function hideModeSelectionModal() {
+			const modal = document.getElementById('modeSelectionModal');
+			if (modal) {
+				const content = modal.querySelector('.tools-modal-content');
+
+				if (content) {
+					content.classList.add('closing');
+					setTimeout(() => {
+						modal.style.display = 'none';
+						content.classList.remove('closing');
+					}, 300);
+				} else {
+					modal.style.display = 'none';
+				}
+
+				document.removeEventListener('keydown', handleModeSelectionEscape);
+				modal.removeEventListener('click', handleModeSelectionClickOutside);
+				pendingModeSelection = null;
+			}
+		}
+
+		function handleModeSelectionEscape(event) {
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				hideModeSelectionModal();
+			}
+		}
+
+		function handleModeSelectionClickOutside(event) {
+			const content = event.target.closest('.tools-modal-content');
+			if (!content) {
+				hideModeSelectionModal();
+			}
+		}
+
+		function selectMode(mode) {
+			pendingModeSelection = mode;
+			updateModeSelectionVisual(mode);
+
+			const radioInput = document.getElementById('mode-' + mode);
+			if (radioInput) {
+				radioInput.checked = true;
+			}
+		}
+
+		function updateModeSelectionVisual(selectedMode) {
+			const options = document.querySelectorAll('.mode-option');
+			options.forEach(option => {
+				const mode = option.getAttribute('data-mode');
+				if (mode === selectedMode) {
+					option.classList.add('selected');
+				} else {
+					option.classList.remove('selected');
+				}
+			});
+		}
+
+		function updateModeSelectionRadios() {
+			const currentRadio = document.getElementById('mode-' + currentConversationMode);
+			if (currentRadio) {
+				currentRadio.checked = true;
+			}
+			updateModeSelectionVisual(currentConversationMode);
+			pendingModeSelection = currentConversationMode;
+		}
+
+		function cancelModeSelection() {
+			pendingModeSelection = currentConversationMode;
+			updateModeSelectionRadios();
+			hideModeSelectionModal();
+		}
+
+		function confirmModeSelection() {
+			if (pendingModeSelection && pendingModeSelection !== currentConversationMode) {
+				applyConversationMode(pendingModeSelection);
+			}
+			hideModeSelectionModal();
+		}
+
+		function applyConversationMode(mode) {
+			const previousMode = currentConversationMode;
+			currentConversationMode = mode;
+			updateModeButtonText(mode);
+
+			if (typeof localStorage !== 'undefined') {
+				localStorage.setItem('conversationMode', mode);
+			}
+
+			showModeChangeNotification(mode);
+			console.log('Conversation mode changed from ' + previousMode + ' to ' + mode);
+		}
+
+		function updateModeButtonText(mode) {
+			const buttonText = document.getElementById('currentModeText');
+			if (buttonText) {
+				const modeNames = {
+					'default': 'Default',
+					'chat': 'Chat',
+					'plan': 'Plan'
+				};
+				buttonText.textContent = modeNames[mode] || 'Default';
+			}
+		}
+
+		function showModeChangeNotification(mode) {
+			const modeNames = {
+				'default': 'Default Mode',
+				'chat': 'Chat Mode',
+				'plan': 'Plan Mode'
+			};
+			const modeName = modeNames[mode] || 'Default Mode';
+			const statusText = document.getElementById('statusText');
+			if (statusText) {
+				const originalText = statusText.textContent;
+				statusText.textContent = modeName + ' activated';
+				setTimeout(() => {
+					statusText.textContent = originalText;
+				}, 2000);
+			}
+		}
+
+		function initializeModeSelection() {
+			if (typeof localStorage !== 'undefined') {
+				const savedMode = localStorage.getItem('conversationMode');
+				if (savedMode && ['default', 'chat', 'plan'].includes(savedMode)) {
+					currentConversationMode = savedMode;
+				}
+			}
+			updateModeButtonText(currentConversationMode);
+		}
+
+		function getCurrentConversationMode() {
+			return currentConversationMode;
+		}
+
+		function setConversationMode(mode) {
+			if (['default', 'chat', 'plan'].includes(mode)) {
+				applyConversationMode(mode);
 			} else {
-				switchElement.classList.remove('active');
+				console.warn('Invalid conversation mode: ' + mode);
 			}
 		}
 
@@ -4890,6 +5050,9 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				type: 'runAbMethod'
 			});
 		}
+
+		// Initialize mode selection on page load
+		initializeModeSelection();
 
 	</script>`;
 

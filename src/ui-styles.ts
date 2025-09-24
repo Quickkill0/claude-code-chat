@@ -1,31 +1,141 @@
 const styles = `
 <style>
+    /* Enhanced animations and smooth transitions */
+    :root {
+        --chat-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --message-enter: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        --hover-scale: 1.02;
+        --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
+        --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.15);
+        --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--vscode-scrollbarSlider-background) transparent;
+    }
+
+    *::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        background-color: var(--vscode-scrollbarSlider-background);
+        border-radius: 4px;
+        transition: background-color 0.2s ease;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+        background-color: var(--vscode-scrollbarSlider-hoverBackground);
+    }
+
     body {
         font-family: var(--vscode-font-family);
-        background-color: var(--vscode-editor-background);
+        background: 
+            radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
+            radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.01) 0%, transparent 50%),
+            linear-gradient(135deg, 
+                var(--vscode-editor-background) 0%, 
+                color-mix(in srgb, var(--vscode-editor-background) 95%, var(--vscode-panel-border) 5%) 100%);
         color: var(--vscode-editor-foreground);
         margin: 0;
         padding: 0;
         height: 100vh;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+            linear-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+        background-size: 20px 20px;
+        pointer-events: none;
+        opacity: 0.5;
+        z-index: 0;
     }
 
     .header {
-        padding: 14px 20px;
+        padding: 16px 24px;
         border-bottom: 1px solid var(--vscode-panel-border);
-        background-color: var(--vscode-panel-background);
+        background: linear-gradient(135deg,
+            var(--vscode-panel-background) 0%,
+            color-mix(in srgb, var(--vscode-panel-background) 98%, var(--vscode-focusBorder) 2%) 100%);
+        backdrop-filter: blur(10px) saturate(180%);
         display: flex;
         justify-content: space-between;
         align-items: center;
+        position: relative;
+        z-index: 100;
+        box-shadow: var(--shadow-light);
+        transition: var(--chat-transition);
+    }
+
+    .header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            var(--vscode-focusBorder) 50%, 
+            transparent 100%);
+        opacity: 0.3;
+    }
+
+    .header:hover {
+        box-shadow: var(--shadow-medium);
     }
 
     .header h2 {
         margin: 0;
-        font-size: 16px;
-        font-weight: 500;
-        color: var(--vscode-foreground);
-        letter-spacing: -0.3px;
+        font-size: 17px;
+        font-weight: 600;
+        background: linear-gradient(135deg, 
+            var(--vscode-foreground) 0%, 
+            color-mix(in srgb, var(--vscode-foreground) 80%, var(--vscode-focusBorder) 20%) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -0.2px;
+        position: relative;
+        transition: var(--chat-transition);
+    }
+
+    .header h2::after {
+        content: attr(data-text);
+        position: absolute;
+        left: 0;
+        top: 0;
+        background: linear-gradient(135deg, 
+            color-mix(in srgb, var(--vscode-focusBorder) 50%, transparent 50%) 0%, 
+            color-mix(in srgb, var(--vscode-focusBorder) 30%, transparent 70%) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        filter: blur(1px);
+        opacity: 0;
+        z-index: -1;
+        transition: opacity 0.3s ease;
+    }
+
+    .header:hover h2::after {
+        opacity: 1;
     }
 
     .controls {
@@ -35,34 +145,83 @@ const styles = `
     }
 
     .btn {
-        background-color: var(--vscode-button-background);
+        background: linear-gradient(135deg, 
+            var(--vscode-button-background) 0%, 
+            color-mix(in srgb, var(--vscode-button-background) 90%, var(--vscode-focusBorder) 10%) 100%);
         color: var(--vscode-button-foreground);
         border: 1px solid var(--vscode-panel-border);
-        padding: 6px 12px;
-        border-radius: 4px;
+        padding: 8px 16px;
+        border-radius: 8px;
         cursor: pointer;
         font-size: 12px;
-        font-weight: 400;
-        transition: all 0.2s ease;
+        font-weight: 500;
+        transition: var(--chat-transition);
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 6px;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        user-select: none;
+    }
+
+    .btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(255, 255, 255, 0.1) 50%, 
+            transparent 100%);
+        transition: left 0.5s ease;
+    }
+
+    .btn:hover::before {
+        left: 100%;
     }
 
     .btn:hover {
-        background-color: var(--vscode-button-background);
+        transform: translateY(-1px) scale(var(--hover-scale));
+        box-shadow: var(--shadow-medium);
         border-color: var(--vscode-focusBorder);
+        background: linear-gradient(135deg, 
+            var(--vscode-button-hoverBackground) 0%, 
+            color-mix(in srgb, var(--vscode-button-hoverBackground) 85%, var(--vscode-focusBorder) 15%) 100%);
+    }
+
+    .btn:active {
+        transform: translateY(0) scale(0.98);
+        box-shadow: var(--shadow-light);
+        transition-duration: 0.1s;
     }
 
     .btn.outlined {
-        background-color: transparent;
+        background: linear-gradient(135deg, 
+            rgba(255, 255, 255, 0.05) 0%, 
+            rgba(255, 255, 255, 0.01) 100%);
         color: var(--vscode-foreground);
-        border-color: var(--vscode-panel-border);
+        border: 1px solid var(--vscode-panel-border);
+        backdrop-filter: blur(10px);
+    }
+
+    .btn.outlined::before {
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(255, 255, 255, 0.08) 50%, 
+            transparent 100%);
     }
 
     .btn.outlined:hover {
-        background-color: var(--vscode-list-hoverBackground);
+        background: linear-gradient(135deg, 
+            var(--vscode-list-hoverBackground) 0%, 
+            color-mix(in srgb, var(--vscode-list-hoverBackground) 90%, var(--vscode-focusBorder) 10%) 100%);
         border-color: var(--vscode-focusBorder);
+        transform: translateY(-1px) scale(var(--hover-scale));
+        box-shadow: var(--shadow-medium);
     }
 
     .btn.small {
@@ -672,27 +831,84 @@ const styles = `
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        position: relative;
+        backdrop-filter: blur(10px);
+    }
+
+    .chat-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 50% 0%, 
+            rgba(255, 255, 255, 0.02) 0%, 
+            transparent 50%);
+        pointer-events: none;
+        z-index: 1;
     }
 
     .messages {
         flex: 1;
-        padding: 8px;
+        padding: 16px;
         overflow-y: auto;
         font-family: var(--vscode-editor-font-family);
         font-size: var(--vscode-editor-font-size);
-        line-height: 1.4;
+        line-height: 1.5;
+        position: relative;
+        z-index: 2;
+        scroll-behavior: smooth;
+        mask-image: linear-gradient(to bottom, 
+            transparent 0px, 
+            black 8px, 
+            black calc(100% - 8px), 
+            transparent 100%);
+    }
+
+    .messages::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, 
+            var(--vscode-scrollbarSlider-background) 0%, 
+            color-mix(in srgb, var(--vscode-scrollbarSlider-background) 80%, var(--vscode-focusBorder) 20%) 100%);
+        border-radius: 6px;
     }
 
     .message {
-        margin-bottom: 6px;
-        padding: 6px 10px;
-        border-radius: 6px;
-        animation: fadeIn 0.2s ease forwards;
-        transition: all 0.15s ease;
+        margin-bottom: 12px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        animation: messageSlideIn 0.4s var(--message-enter) forwards;
+        transition: var(--chat-transition);
+        position: relative;
+        backdrop-filter: blur(10px) saturate(120%);
+        will-change: transform, opacity;
     }
 
     .message:hover {
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-medium);
+    }
+
+    .message:last-child {
+        margin-bottom: 0;
+    }
+
+    @keyframes messageSlideIn {
+        0% { 
+            opacity: 0; 
+            transform: translateY(20px) scale(0.95); 
+            filter: blur(2px);
+        }
+        50% {
+            opacity: 0.5;
+            transform: translateY(10px) scale(0.98);
+            filter: blur(1px);
+        }
+        100% { 
+            opacity: 1; 
+            transform: translateY(0) scale(1); 
+            filter: blur(0px);
+        }
     }
 
     @keyframes fadeIn {
@@ -700,13 +916,121 @@ const styles = `
         to { opacity: 1; transform: translateY(0); }
     }
 
+    /* Typing indicator animation */
+    @keyframes typingPulse {
+        0%, 20% { transform: scale(0.8); opacity: 0.5; }
+        50% { transform: scale(1.2); opacity: 1; }
+        80%, 100% { transform: scale(0.8); opacity: 0.5; }
+    }
+
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 12px;
+        margin: 8px 0;
+        opacity: 0;
+        animation: fadeIn 0.3s ease forwards;
+    }
+
+    .typing-indicator .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--vscode-descriptionForeground);
+        animation: typingPulse 1.5s ease-in-out infinite;
+    }
+
+    .typing-indicator .dot:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .typing-indicator .dot:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    /* Floating animation for buttons */
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-2px); }
+    }
+
+    /* Glow animation for focus states */
+    @keyframes glow {
+        0%, 100% { box-shadow: 0 0 5px rgba(var(--vscode-focusBorder), 0.5); }
+        50% { box-shadow: 0 0 20px rgba(var(--vscode-focusBorder), 0.8); }
+    }
+
+    /* Shimmer effect for loading */
+    @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+
+    .loading-shimmer {
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(255, 255, 255, 0.1) 50%, 
+            transparent 100%);
+        background-size: 200% 100%;
+        animation: shimmer 2s ease-in-out infinite;
+    }
+
+    /* Smooth scroll-to-bottom button */
+    .scroll-to-bottom {
+        position: fixed;
+        bottom: 140px;
+        right: 24px;
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+        background: linear-gradient(135deg, 
+            var(--vscode-button-background) 0%, 
+            color-mix(in srgb, var(--vscode-button-background) 85%, var(--vscode-focusBorder) 15%) 100%);
+        border: 1px solid var(--vscode-panel-border);
+        color: var(--vscode-button-foreground);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        opacity: 0;
+        visibility: hidden;
+        transition: var(--chat-transition);
+        backdrop-filter: blur(10px);
+        box-shadow: var(--shadow-medium);
+        z-index: 1000;
+    }
+
+    .scroll-to-bottom.visible {
+        opacity: 0.9;
+        visibility: visible;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    .scroll-to-bottom:hover {
+        opacity: 1;
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: var(--shadow-heavy);
+    }
+
     .message.user {
-        border: 1px solid rgba(102, 51, 153, 0.15);
-        background: linear-gradient(90deg, rgba(102, 51, 153, 0.03) 0%, transparent 50%);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        background: linear-gradient(135deg, 
+            rgba(139, 92, 246, 0.08) 0%, 
+            rgba(139, 92, 246, 0.04) 30%,
+            rgba(139, 92, 246, 0.01) 70%,
+            transparent 100%);
         color: var(--vscode-editor-foreground);
         font-family: var(--vscode-editor-font-family);
         position: relative;
         overflow: hidden;
+        box-shadow: 0 2px 12px rgba(139, 92, 246, 0.1);
+    }
+
+    .message.user:hover {
+        border-color: rgba(139, 92, 246, 0.3);
+        box-shadow: 0 4px 20px rgba(139, 92, 246, 0.15);
     }
 
     .message.user::before {
@@ -715,16 +1039,31 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 3px;
-        background: linear-gradient(180deg, #8B5CF6 0%, #6639B8 100%);
+        width: 4px;
+        background: linear-gradient(180deg, 
+            #8B5CF6 0%, 
+            #7C3AED 50%, 
+            #6D28D9 100%);
+        border-radius: 0 2px 2px 0;
+        box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
     }
 
     .message.claude {
-        border: 1px solid rgba(46, 204, 113, 0.1);
-        background: linear-gradient(90deg, rgba(46, 204, 113, 0.03) 0%, transparent 50%);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        background: linear-gradient(135deg, 
+            rgba(34, 197, 94, 0.08) 0%, 
+            rgba(34, 197, 94, 0.04) 30%,
+            rgba(34, 197, 94, 0.01) 70%,
+            transparent 100%);
         color: var(--vscode-editor-foreground);
         position: relative;
         overflow: hidden;
+        box-shadow: 0 2px 12px rgba(34, 197, 94, 0.1);
+    }
+
+    .message.claude:hover {
+        border-color: rgba(34, 197, 94, 0.3);
+        box-shadow: 0 4px 20px rgba(34, 197, 94, 0.15);
     }
 
     .message.claude::before {
@@ -733,8 +1072,13 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 3px;
-        background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
+        width: 4px;
+        background: linear-gradient(180deg, 
+            #22C55E 0%, 
+            #16A34A 50%, 
+            #15803D 100%);
+        border-radius: 0 2px 2px 0;
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
     }
 
     .message.error {
@@ -1302,12 +1646,30 @@ const styles = `
     }
 
     .input-container {
-        padding: 10px;
+        padding: 16px 20px;
         border-top: 1px solid var(--vscode-panel-border);
-        background-color: var(--vscode-panel-background);
+        background: linear-gradient(135deg,
+            var(--vscode-panel-background) 0%,
+            color-mix(in srgb, var(--vscode-panel-background) 98%, var(--vscode-focusBorder) 2%) 100%);
+        backdrop-filter: blur(15px) saturate(150%);
         display: flex;
         flex-direction: column;
         position: relative;
+        box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .input-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            var(--vscode-focusBorder) 50%, 
+            transparent 100%);
+        opacity: 0.2;
     }
 
     .input-modes {
@@ -1379,14 +1741,24 @@ const styles = `
 
     .textarea-wrapper {
         flex: 1;
-        background-color: var(--vscode-input-background);
+        background: linear-gradient(135deg,
+            var(--vscode-input-background) 0%,
+            color-mix(in srgb, var(--vscode-input-background) 95%, var(--vscode-focusBorder) 5%) 100%);
         border: 1px solid var(--vscode-input-border);
-        border-radius: 6px;
+        border-radius: 12px;
         overflow: hidden;
+        transition: var(--chat-transition);
+        backdrop-filter: blur(10px);
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
     }
 
     .textarea-wrapper:focus-within {
         border-color: var(--vscode-focusBorder);
+        box-shadow: 
+            inset 0 1px 3px rgba(0, 0, 0, 0.05),
+            0 0 0 3px color-mix(in srgb, var(--vscode-focusBorder) 20%, transparent 80%),
+            0 2px 12px rgba(0, 0, 0, 0.08);
+        transform: translateY(-1px);
     }
 
     /* Context Files Container - Above Input */
@@ -1645,15 +2017,40 @@ const styles = `
     }
 
     .send-btn {
-        background-color: var(--vscode-button-background);
+        background: linear-gradient(135deg, 
+            var(--vscode-button-background) 0%, 
+            color-mix(in srgb, var(--vscode-button-background) 85%, var(--vscode-focusBorder) 15%) 100%);
         color: var(--vscode-button-foreground);
         border: none;
-        padding: 3px 7px;
-        border-radius: 4px;
+        padding: 8px 16px;
+        border-radius: 10px;
         cursor: pointer;
-        font-size: 11px;
-        font-weight: 500;
-        transition: all 0.2s ease;
+        font-size: 12px;
+        font-weight: 600;
+        transition: var(--chat-transition);
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        box-shadow: var(--shadow-light);
+        user-select: none;
+    }
+
+    .send-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(255, 255, 255, 0.2) 50%, 
+            transparent 100%);
+        transition: left 0.5s ease;
+    }
+
+    .send-btn:hover::before {
+        left: 100%;
     }
 
     .send-btn div {
@@ -1668,12 +2065,30 @@ const styles = `
     }
 
     .send-btn:hover {
-        background-color: var(--vscode-button-hoverBackground);
+        background: linear-gradient(135deg, 
+            var(--vscode-button-hoverBackground) 0%, 
+            color-mix(in srgb, var(--vscode-button-hoverBackground) 80%, var(--vscode-focusBorder) 20%) 100%);
+        transform: translateY(-1px) scale(1.05);
+        box-shadow: var(--shadow-medium);
+    }
+
+    .send-btn:active {
+        transform: translateY(0) scale(0.98);
+        transition-duration: 0.1s;
     }
 
     .send-btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .send-btn:disabled:hover {
+        transform: none;
+        background: linear-gradient(135deg, 
+            var(--vscode-button-background) 0%, 
+            color-mix(in srgb, var(--vscode-button-background) 85%, var(--vscode-focusBorder) 15%) 100%);
     }
 
     .secondary-button {
@@ -1752,55 +2167,725 @@ const styles = `
         transform: translateY(-1px);
     }
 
+    /* Enhanced Modal System with Glass-morphism */
     .file-picker-modal {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
+        background:
+            radial-gradient(circle at 30% 40%, rgba(0, 0, 0, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 70% 60%, rgba(0, 0, 0, 0.2) 0%, transparent 50%),
+            linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.6) 100%);
+        backdrop-filter: blur(12px) saturate(120%);
         z-index: 1000;
         display: flex;
         align-items: center;
         justify-content: center;
+        opacity: 0;
+        animation: modalFadeIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            backdrop-filter: blur(0px);
+        }
+        to {
+            opacity: 1;
+            backdrop-filter: blur(12px) saturate(120%);
+        }
+    }
+
+    .file-picker-modal.closing {
+        animation: modalFadeOut 0.3s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+    }
+
+    @keyframes modalFadeOut {
+        from {
+            opacity: 1;
+            backdrop-filter: blur(12px) saturate(120%);
+        }
+        to {
+            opacity: 0;
+            backdrop-filter: blur(0px);
+        }
     }
 
     .file-picker-content {
-        background-color: var(--vscode-editor-background);
-        border: 1px solid var(--vscode-panel-border);
-        border-radius: 4px;
-        width: 400px;
-        max-height: 500px;
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-editor-background) 95%, var(--vscode-focusBorder) 5%) 0%,
+                var(--vscode-editor-background) 100%);
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 70%, var(--vscode-focusBorder) 30%);
+        border-radius: 16px;
+        width: 500px;
+        max-width: 90vw;
+        max-height: 70vh;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        box-shadow:
+            0 20px 60px rgba(0, 0, 0, 0.4),
+            0 8px 32px rgba(0, 0, 0, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px) saturate(180%);
+        transform: scale(0.8) translateY(20px);
+        animation: modalContentSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.1s forwards;
+        position: relative;
+        overflow: hidden;
+    }
+
+    @keyframes modalContentSlideIn {
+        from {
+            transform: scale(0.8) translateY(20px);
+            opacity: 0.8;
+        }
+        to {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .file-picker-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            color-mix(in srgb, var(--vscode-focusBorder) 50%, transparent 50%) 50%,
+            transparent 100%);
+        opacity: 0.6;
+    }
+
+    .file-picker-content.closing {
+        animation: modalContentSlideOut 0.3s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+    }
+
+    @keyframes modalContentSlideOut {
+        from {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+        to {
+            transform: scale(0.85) translateY(-20px);
+            opacity: 0;
+        }
     }
 
     .file-picker-header {
-        padding: 12px;
-        border-bottom: 1px solid var(--vscode-panel-border);
+        padding: 20px 24px;
+        border-bottom: 1px solid color-mix(in srgb, var(--vscode-panel-border) 60%, transparent 40%);
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 16px;
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-panel-background) 80%, var(--vscode-focusBorder) 20%) 0%,
+                var(--vscode-panel-background) 100%);
+        border-radius: 16px 16px 0 0;
+        position: relative;
+    }
+
+    .file-picker-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 24px;
+        right: 24px;
+        height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            var(--vscode-focusBorder) 50%,
+            transparent 100%);
+        opacity: 0.3;
     }
 
     .file-picker-header span {
-        font-weight: 500;
+        font-weight: 600;
+        font-size: 16px;
         color: var(--vscode-foreground);
+        background: linear-gradient(135deg,
+            var(--vscode-foreground) 0%,
+            color-mix(in srgb, var(--vscode-foreground) 80%, var(--vscode-focusBorder) 20%) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
 
     .file-search-input {
-        background-color: var(--vscode-input-background);
+        background:
+            linear-gradient(135deg,
+                var(--vscode-input-background) 0%,
+                color-mix(in srgb, var(--vscode-input-background) 95%, var(--vscode-focusBorder) 5%) 100%);
         color: var(--vscode-input-foreground);
-        border: 1px solid var(--vscode-input-border);
-        padding: 6px 8px;
-        border-radius: 3px;
+        border: 1px solid color-mix(in srgb, var(--vscode-input-border) 70%, var(--vscode-focusBorder) 30%);
+        padding: 12px 16px;
+        border-radius: 10px;
         outline: none;
-        font-size: 13px;
+        font-size: 14px;
+        transition: var(--chat-transition);
+        box-shadow:
+            0 2px 8px rgba(0, 0, 0, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
     }
 
     .file-search-input:focus {
         border-color: var(--vscode-focusBorder);
+        box-shadow:
+            0 4px 16px rgba(0, 0, 0, 0.15),
+            0 0 0 2px color-mix(in srgb, var(--vscode-focusBorder) 20%, transparent 80%),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .file-search-input::placeholder {
+        color: color-mix(in srgb, var(--vscode-input-foreground) 60%, transparent 40%);
+    }
+
+    /* Enhanced Modal Form Styles */
+    .form-group {
+        margin-bottom: 20px;
+        opacity: 0;
+        animation: formGroupSlideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .form-group:nth-child(1) { animation-delay: 0.1s; }
+    .form-group:nth-child(2) { animation-delay: 0.15s; }
+    .form-group:nth-child(3) { animation-delay: 0.2s; }
+    .form-group:nth-child(4) { animation-delay: 0.25s; }
+    .form-group:nth-child(5) { animation-delay: 0.3s; }
+
+    @keyframes formGroupSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--vscode-foreground);
+        background: linear-gradient(135deg,
+            var(--vscode-foreground) 0%,
+            color-mix(in srgb, var(--vscode-foreground) 85%, var(--vscode-focusBorder) 15%) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="url"],
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        background:
+            linear-gradient(135deg,
+                var(--vscode-input-background) 0%,
+                color-mix(in srgb, var(--vscode-input-background) 95%, var(--vscode-focusBorder) 5%) 100%);
+        color: var(--vscode-input-foreground);
+        border: 1px solid color-mix(in srgb, var(--vscode-input-border) 70%, var(--vscode-focusBorder) 30%);
+        padding: 12px 16px;
+        border-radius: 10px;
+        outline: none;
+        font-size: 14px;
+        transition: var(--chat-transition);
+        box-shadow:
+            0 2px 8px rgba(0, 0, 0, 0.05),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        box-sizing: border-box;
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 80px;
+        font-family: var(--vscode-editor-font-family, monospace);
+        line-height: 1.5;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: var(--vscode-focusBorder);
+        box-shadow:
+            0 4px 16px rgba(0, 0, 0, 0.1),
+            0 0 0 2px color-mix(in srgb, var(--vscode-focusBorder) 20%, transparent 80%),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .form-group input::placeholder,
+    .form-group textarea::placeholder {
+        color: color-mix(in srgb, var(--vscode-input-foreground) 60%, transparent 40%);
+    }
+
+    /* Enhanced Modal List Items */
+    .tool-item,
+    .mcp-server-item,
+    .agents-item,
+    .conversation-item {
+        padding: 16px 20px;
+        margin-bottom: 12px;
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-list-hoverBackground) 30%, transparent 70%) 0%,
+                color-mix(in srgb, var(--vscode-list-hoverBackground) 10%, transparent 90%) 100%);
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 60%, transparent 40%);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: var(--chat-transition);
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        opacity: 0;
+        animation: listItemSlideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .tool-item:nth-child(1) { animation-delay: 0.1s; }
+    .tool-item:nth-child(2) { animation-delay: 0.15s; }
+    .tool-item:nth-child(3) { animation-delay: 0.2s; }
+    .tool-item:nth-child(4) { animation-delay: 0.25s; }
+    .tool-item:nth-child(5) { animation-delay: 0.3s; }
+    .tool-item:nth-child(6) { animation-delay: 0.35s; }
+
+    @keyframes listItemSlideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .tool-item::before,
+    .mcp-server-item::before,
+    .agents-item::before,
+    .conversation-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.05) 50%,
+            transparent 100%);
+        transition: left 0.5s ease;
+    }
+
+    .tool-item:hover::before,
+    .mcp-server-item:hover::before,
+    .agents-item:hover::before,
+    .conversation-item:hover::before {
+        left: 100%;
+    }
+
+    .tool-item:hover,
+    .mcp-server-item:hover,
+    .agents-item:hover,
+    .conversation-item:hover {
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-list-hoverBackground) 60%, transparent 40%) 0%,
+                color-mix(in srgb, var(--vscode-list-hoverBackground) 30%, transparent 70%) 100%);
+        border-color: var(--vscode-focusBorder);
+        transform: translateY(-2px);
+        box-shadow:
+            0 8px 24px rgba(0, 0, 0, 0.15),
+            0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .tool-item:active,
+    .mcp-server-item:active,
+    .agents-item:active,
+    .conversation-item:active {
+        transform: translateY(0);
+        box-shadow:
+            0 4px 12px rgba(0, 0, 0, 0.1),
+            0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    /* MCP Server Status Indicators */
+    .mcp-server-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        backdrop-filter: blur(10px);
+        border: 1px solid;
+        transition: var(--chat-transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mcp-server-status::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: inherit;
+        opacity: 0.1;
+        transition: opacity 0.3s ease;
+    }
+
+    .mcp-server-status:hover::before {
+        opacity: 0.2;
+    }
+
+    .mcp-server-status.connected {
+        background: linear-gradient(135deg,
+            color-mix(in srgb, #22c55e 20%, transparent 80%),
+            color-mix(in srgb, #22c55e 10%, transparent 90%));
+        color: #22c55e;
+        border-color: color-mix(in srgb, #22c55e 30%, transparent 70%);
+    }
+
+    .mcp-server-status.connected::before {
+        background: #22c55e;
+    }
+
+    .mcp-server-status.disconnected {
+        background: linear-gradient(135deg,
+            color-mix(in srgb, #ef4444 20%, transparent 80%),
+            color-mix(in srgb, #ef4444 10%, transparent 90%));
+        color: #ef4444;
+        border-color: color-mix(in srgb, #ef4444 30%, transparent 70%);
+    }
+
+    .mcp-server-status.disconnected::before {
+        background: #ef4444;
+    }
+
+    .mcp-server-status.connecting {
+        background: linear-gradient(135deg,
+            color-mix(in srgb, #f59e0b 20%, transparent 80%),
+            color-mix(in srgb, #f59e0b 10%, transparent 90%));
+        color: #f59e0b;
+        border-color: color-mix(in srgb, #f59e0b 30%, transparent 70%);
+        animation: pulse 2s infinite;
+    }
+
+    .mcp-server-status.connecting::before {
+        background: #f59e0b;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    /* Agent Status and Color Indicators */
+    .agent-color-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid var(--vscode-panel-border);
+        position: relative;
+        overflow: hidden;
+        transition: var(--chat-transition);
+    }
+
+    .agent-color-indicator::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        border-radius: 50%;
+        background: inherit;
+        opacity: 0.2;
+        transform: scale(1.5);
+        transition: var(--chat-transition);
+    }
+
+    .agent-color-indicator:hover::before {
+        transform: scale(2);
+        opacity: 0.1;
+    }
+
+    .agent-color-indicator.green { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .agent-color-indicator.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .agent-color-indicator.red { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .agent-color-indicator.cyan { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .agent-color-indicator.yellow { background: linear-gradient(135deg, #eab308, #ca8a04); }
+    .agent-color-indicator.purple { background: linear-gradient(135deg, #a855f7, #9333ea); }
+    .agent-color-indicator.orange { background: linear-gradient(135deg, #f97316, #ea580c); }
+    .agent-color-indicator.pink { background: linear-gradient(135deg, #ec4899, #db2777); }
+
+    /* Enhanced Button Styles for Modals */
+    .form-buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+        margin-right: 8px;
+        padding-top: 24px;
+        border-top: 1px solid color-mix(in srgb, var(--vscode-panel-border) 60%, transparent 40%);
+        justify-content: flex-end;
+    }
+
+    .form-buttons .btn {
+        min-width: 100px;
+        padding: 12px 24px;
+        font-weight: 600;
+    }
+
+    .form-buttons .btn.primary {
+        background: linear-gradient(135deg,
+            var(--vscode-button-background) 0%,
+            color-mix(in srgb, var(--vscode-button-background) 85%, var(--vscode-focusBorder) 15%) 100%);
+        box-shadow:
+            0 4px 16px color-mix(in srgb, var(--vscode-button-background) 30%, transparent 70%),
+            0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-buttons .btn.primary:hover {
+        background: linear-gradient(135deg,
+            var(--vscode-button-hoverBackground) 0%,
+            color-mix(in srgb, var(--vscode-button-hoverBackground) 85%, var(--vscode-focusBorder) 15%) 100%);
+        box-shadow:
+            0 8px 24px color-mix(in srgb, var(--vscode-button-background) 40%, transparent 60%),
+            0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Loading and Progress Indicators */
+    .loading-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid color-mix(in srgb, var(--vscode-focusBorder) 20%, transparent 80%);
+        border-top: 2px solid var(--vscode-focusBorder);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Tab Enhancement for Modals */
+    .mcp-scope-tabs,
+    .agents-scope-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 20px;
+        padding: 4px;
+        background: color-mix(in srgb, var(--vscode-panel-background) 50%, transparent 50%);
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 60%, transparent 40%);
+    }
+
+    .mcp-scope-tab,
+    .agents-scope-tab {
+        flex: 1;
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        color: var(--vscode-foreground);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: var(--chat-transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mcp-scope-tab::before,
+    .agents-scope-tab::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.1) 50%,
+            transparent 100%);
+        transition: left 0.3s ease;
+    }
+
+    .mcp-scope-tab:hover::before,
+    .agents-scope-tab:hover::before {
+        left: 100%;
+    }
+
+    .mcp-scope-tab.active,
+    .agents-scope-tab.active {
+        background: linear-gradient(135deg,
+            var(--vscode-button-background) 0%,
+            color-mix(in srgb, var(--vscode-button-background) 85%, var(--vscode-focusBorder) 15%) 100%);
+        color: var(--vscode-button-foreground);
+        box-shadow:
+            0 2px 8px color-mix(in srgb, var(--vscode-button-background) 30%, transparent 70%),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .mcp-scope-tab:hover,
+    .agents-scope-tab:hover {
+        background: color-mix(in srgb, var(--vscode-list-hoverBackground) 60%, transparent 40%);
+        transform: translateY(-1px);
+    }
+
+    .mcp-scope-tab.active:hover,
+    .agents-scope-tab.active:hover {
+        background: linear-gradient(135deg,
+            var(--vscode-button-hoverBackground) 0%,
+            color-mix(in srgb, var(--vscode-button-hoverBackground) 85%, var(--vscode-focusBorder) 15%) 100%);
+    }
+
+    /* Accessibility and Reduced Motion Support */
+    @media (prefers-reduced-motion: reduce) {
+        .file-picker-modal,
+        .tools-modal,
+        .checkpoint-panel,
+        .conversation-history,
+        .form-group,
+        .tool-item,
+        .mcp-server-item,
+        .agents-item,
+        .conversation-item {
+            animation: none !important;
+            transition: none !important;
+        }
+
+        .file-picker-content,
+        .tools-modal-content {
+            transform: none !important;
+        }
+
+        .loading-spinner {
+            animation: none !important;
+        }
+
+        .mcp-server-status.connecting {
+            animation: none !important;
+        }
+    }
+
+    /* Focus States for Accessibility */
+    .tools-close-btn:focus-visible,
+    .form-group input:focus-visible,
+    .form-group select:focus-visible,
+    .form-group textarea:focus-visible,
+    .mcp-scope-tab:focus-visible,
+    .agents-scope-tab:focus-visible {
+        outline: 2px solid var(--vscode-focusBorder);
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
+
+    .tool-item:focus-visible,
+    .mcp-server-item:focus-visible,
+    .agents-item:focus-visible,
+    .conversation-item:focus-visible {
+        outline: 2px solid var(--vscode-focusBorder);
+        outline-offset: 2px;
+        border-radius: 12px;
+    }
+
+    /* High Contrast Mode Support */
+    @media (prefers-contrast: high) {
+        .file-picker-modal,
+        .tools-modal {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: none;
+        }
+
+        .file-picker-content,
+        .tools-modal-content,
+        .checkpoint-panel,
+        .conversation-history {
+            border-width: 2px;
+            backdrop-filter: none;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea,
+        .file-search-input {
+            border-width: 2px;
+            backdrop-filter: none;
+        }
+
+        .mcp-server-status,
+        .agent-color-indicator {
+            border-width: 2px;
+        }
+    }
+
+    /* Dark/Light Theme Specific Enhancements */
+    [data-vscode-theme-kind="vscode-dark"] {
+        --modal-glow: 0 0 40px rgba(100, 149, 237, 0.1);
+    }
+
+    [data-vscode-theme-kind="vscode-light"] {
+        --modal-glow: 0 0 40px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Enhanced scroll styles for modals */
+    .tools-modal-body,
+    .conversation-list,
+    .checkpoint-list {
+        scrollbar-width: thin;
+        scrollbar-color: var(--vscode-scrollbarSlider-background) transparent;
+    }
+
+    .tools-modal-body::-webkit-scrollbar,
+    .conversation-list::-webkit-scrollbar,
+    .checkpoint-list::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .tools-modal-body::-webkit-scrollbar-track,
+    .conversation-list::-webkit-scrollbar-track,
+    .checkpoint-list::-webkit-scrollbar-track {
+        background: transparent;
+        border-radius: 3px;
+    }
+
+    .tools-modal-body::-webkit-scrollbar-thumb,
+    .conversation-list::-webkit-scrollbar-thumb,
+    .checkpoint-list::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg,
+            var(--vscode-scrollbarSlider-background),
+            color-mix(in srgb, var(--vscode-scrollbarSlider-background) 80%, var(--vscode-focusBorder) 20%));
+        border-radius: 3px;
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 50%, transparent 50%);
+    }
+
+    .tools-modal-body::-webkit-scrollbar-thumb:hover,
+    .conversation-list::-webkit-scrollbar-thumb:hover,
+    .checkpoint-list::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg,
+            var(--vscode-scrollbarSlider-hoverBackground),
+            color-mix(in srgb, var(--vscode-scrollbarSlider-hoverBackground) 80%, var(--vscode-focusBorder) 20%));
     }
 
     .file-list {
@@ -2031,54 +3116,159 @@ const styles = `
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
+        background:
+            radial-gradient(circle at 30% 40%, rgba(0, 0, 0, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 70% 60%, rgba(0, 0, 0, 0.2) 0%, transparent 50%),
+            linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.6) 100%);
+        backdrop-filter: blur(12px) saturate(120%);
         z-index: 1000;
         display: flex;
         align-items: center;
         justify-content: center;
+        opacity: 0;
+        animation: modalFadeIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
 
     .tools-modal-content {
-        background-color: var(--vscode-editor-background);
-        border: 1px solid var(--vscode-panel-border);
-        border-radius: 8px;
-        width: 700px;
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-editor-background) 95%, var(--vscode-focusBorder) 5%) 0%,
+                var(--vscode-editor-background) 100%);
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 70%, var(--vscode-focusBorder) 30%);
+        border-radius: 16px;
+        width: 800px;
         max-width: 90vw;
-        max-height: 80vh;
+        max-height: 85vh;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        box-shadow:
+            0 20px 60px rgba(0, 0, 0, 0.4),
+            0 8px 32px rgba(0, 0, 0, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px) saturate(180%);
         overflow: hidden;
+        transform: scale(0.8) translateY(20px);
+        animation: modalContentSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.1s forwards;
+        position: relative;
+    }
+
+    .tools-modal-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            color-mix(in srgb, var(--vscode-focusBorder) 50%, transparent 50%) 50%,
+            transparent 100%);
+        opacity: 0.6;
+    }
+
+    .tools-modal-content.closing {
+        animation: modalContentSlideOut 0.3s cubic-bezier(0.4, 0, 0.6, 1) forwards;
     }
 
     .tools-modal-header {
-        padding: 16px 20px;
-        border-bottom: 1px solid var(--vscode-panel-border);
+        padding: 24px 32px;
+        border-bottom: 1px solid color-mix(in srgb, var(--vscode-panel-border) 60%, transparent 40%);
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-shrink: 0;
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-panel-background) 80%, var(--vscode-focusBorder) 20%) 0%,
+                var(--vscode-panel-background) 100%);
+        border-radius: 16px 16px 0 0;
+        position: relative;
+    }
+
+    .tools-modal-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 32px;
+        right: 32px;
+        height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            var(--vscode-focusBorder) 50%,
+            transparent 100%);
+        opacity: 0.3;
     }
 
     .tools-modal-body {
         flex: 1;
         overflow-y: auto;
         overflow-x: hidden;
+        padding: 24px 32px;
+        background:
+            linear-gradient(to bottom,
+                var(--vscode-editor-background) 0%,
+                color-mix(in srgb, var(--vscode-editor-background) 98%, var(--vscode-panel-border) 2%) 100%);
     }
 
     .tools-modal-header span {
         font-weight: 600;
-        font-size: 14px;
+        font-size: 18px;
         color: var(--vscode-foreground);
+        background: linear-gradient(135deg,
+            var(--vscode-foreground) 0%,
+            color-mix(in srgb, var(--vscode-foreground) 80%, var(--vscode-focusBorder) 20%) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -0.2px;
     }
 
     .tools-close-btn {
-        background: none;
-        border: none;
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--vscode-button-background) 50%, transparent 50%) 0%,
+            color-mix(in srgb, var(--vscode-button-background) 30%, transparent 70%) 100%);
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 60%, transparent 40%);
         color: var(--vscode-foreground);
         cursor: pointer;
         font-size: 16px;
-        padding: 4px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        transition: var(--chat-transition);
+        backdrop-filter: blur(10px);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .tools-close-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.1) 50%,
+            transparent 100%);
+        transition: left 0.3s ease;
+    }
+
+    .tools-close-btn:hover::before {
+        left: 100%;
+    }
+
+    .tools-close-btn:hover {
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--vscode-button-hoverBackground) 70%, transparent 30%) 0%,
+            color-mix(in srgb, var(--vscode-button-hoverBackground) 50%, transparent 50%) 100%);
+        border-color: var(--vscode-focusBorder);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .tools-close-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .tools-beta-warning {
@@ -2897,22 +4087,87 @@ const styles = `
         left: 0;
         right: 0;
         bottom: 60px;
-        background-color: var(--vscode-editor-background);
-        border: 1px solid var(--vscode-widget-border);
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-editor-background) 95%, var(--vscode-focusBorder) 5%) 0%,
+                var(--vscode-editor-background) 100%);
+        border: 1px solid color-mix(in srgb, var(--vscode-widget-border) 70%, var(--vscode-focusBorder) 30%);
+        border-radius: 16px 16px 0 0;
+        box-shadow:
+            0 -8px 32px rgba(0, 0, 0, 0.15),
+            0 -4px 16px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(20px) saturate(180%);
         z-index: 1000;
+        opacity: 0;
+        transform: translateY(20px);
+        animation: conversationSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        overflow: hidden;
+    }
+
+    @keyframes conversationSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .conversation-history::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            color-mix(in srgb, var(--vscode-focusBorder) 50%, transparent 50%) 50%,
+            transparent 100%);
+        opacity: 0.6;
     }
 
     .conversation-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--vscode-widget-border);
+        padding: 24px 32px;
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-panel-background) 80%, var(--vscode-focusBorder) 20%) 0%,
+                var(--vscode-panel-background) 100%);
+        border-bottom: 1px solid color-mix(in srgb, var(--vscode-widget-border) 60%, transparent 40%);
+        border-radius: 16px 16px 0 0;
+        position: relative;
+    }
+
+    .conversation-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 32px;
+        right: 32px;
+        height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            var(--vscode-focusBorder) 50%,
+            transparent 100%);
+        opacity: 0.3;
     }
 
     .conversation-header h3 {
         margin: 0;
-        font-size: 16px;
+        font-weight: 600;
+        font-size: 18px;
+        background: linear-gradient(135deg,
+            var(--vscode-foreground) 0%,
+            color-mix(in srgb, var(--vscode-foreground) 80%, var(--vscode-focusBorder) 20%) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -0.2px;
     }
 
     .conversation-list {
@@ -3541,11 +4796,13 @@ const styles = `
     }
 
     .mcp-actions {
-        padding: 16px 0 0 0;
+        padding: 16px 16px 16px 0;
         border-top: 1px solid var(--vscode-panel-border);
         display: flex;
         gap: 8px;
         justify-content: flex-end;
+        margin-top: 8px;
+        margin-right: 8px;
     }
 
     .mcp-actions .btn {
@@ -3760,16 +5017,41 @@ const styles = `
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background: var(--vscode-editor-background);
-        border: 1px solid var(--vscode-panel-border);
-        border-radius: 8px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-editor-background) 95%, var(--vscode-focusBorder) 5%) 0%,
+                var(--vscode-editor-background) 100%);
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 70%, var(--vscode-focusBorder) 30%);
+        border-radius: 16px;
+        box-shadow:
+            0 20px 60px rgba(0, 0, 0, 0.4),
+            0 8px 32px rgba(0, 0, 0, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px) saturate(180%);
         width: 90%;
-        max-width: 600px;
-        max-height: 70vh;
+        max-width: 700px;
+        max-height: 75vh;
         display: flex;
         flex-direction: column;
         z-index: 2000;
+        opacity: 0;
+        animation: modalContentSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .checkpoint-panel::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            color-mix(in srgb, var(--vscode-focusBorder) 50%, transparent 50%) 50%,
+            transparent 100%);
+        opacity: 0.6;
     }
 
     .checkpoint-panel.hidden {
@@ -3777,12 +5059,44 @@ const styles = `
     }
 
     .checkpoint-header {
-        padding: 16px 20px;
-        border-bottom: 1px solid var(--vscode-panel-border);
+        padding: 24px 32px;
+        border-bottom: 1px solid color-mix(in srgb, var(--vscode-panel-border) 60%, transparent 40%);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: var(--vscode-panel-background);
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-panel-background) 80%, var(--vscode-focusBorder) 20%) 0%,
+                var(--vscode-panel-background) 100%);
+        border-radius: 16px 16px 0 0;
+        position: relative;
+    }
+
+    .checkpoint-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 32px;
+        right: 32px;
+        height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            var(--vscode-focusBorder) 50%,
+            transparent 100%);
+        opacity: 0.3;
+    }
+
+    .checkpoint-header h3 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 18px;
+        background: linear-gradient(135deg,
+            var(--vscode-foreground) 0%,
+            color-mix(in srgb, var(--vscode-foreground) 80%, var(--vscode-focusBorder) 20%) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -0.2px;
     }
 
     .checkpoint-header h3 {
@@ -4159,6 +5473,250 @@ const styles = `
 
     .ai-generate-form textarea {
         resize: vertical;
+    }
+
+    /* Mode Selection Styles */
+    .mode-selection-btn {
+        position: relative;
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--vscode-button-background) 20%, transparent 80%),
+            color-mix(in srgb, var(--vscode-button-background) 10%, transparent 90%));
+        border: 1px solid color-mix(in srgb, var(--vscode-button-background) 30%, transparent 70%);
+    }
+
+    .mode-selection-btn:hover {
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--vscode-button-background) 30%, transparent 70%),
+            color-mix(in srgb, var(--vscode-button-background) 15%, transparent 85%));
+        border-color: color-mix(in srgb, var(--vscode-button-background) 40%, transparent 60%);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    .mode-selection-content {
+        width: 500px;
+        max-width: 90vw;
+    }
+
+    .mode-selection-description {
+        padding: 0 32px 20px 32px;
+        color: var(--vscode-descriptionForeground);
+        font-size: 13px;
+        line-height: 1.5;
+        background:
+            linear-gradient(to bottom,
+                transparent 0%,
+                color-mix(in srgb, var(--vscode-panel-border) 5%, transparent 95%) 100%);
+    }
+
+    .mode-selection-options {
+        padding: 0 32px 20px 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .mode-option {
+        border: 2px solid color-mix(in srgb, var(--vscode-panel-border) 60%, transparent 40%);
+        border-radius: 12px;
+        padding: 16px 20px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-input-background) 95%, var(--vscode-focusBorder) 5%) 0%,
+                var(--vscode-input-background) 100%);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mode-option::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--vscode-focusBorder) 8%, transparent 92%) 0%,
+            transparent 50%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+    }
+
+    .mode-option:hover {
+        border-color: color-mix(in srgb, var(--vscode-focusBorder) 50%, transparent 50%);
+        transform: translateY(-2px);
+        box-shadow:
+            0 4px 16px rgba(0, 0, 0, 0.1),
+            0 0 0 1px color-mix(in srgb, var(--vscode-focusBorder) 20%, transparent 80%);
+    }
+
+    .mode-option:hover::before {
+        opacity: 1;
+    }
+
+    .mode-option.selected {
+        border-color: var(--vscode-focusBorder);
+        background:
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--vscode-focusBorder) 8%, var(--vscode-input-background) 92%) 0%,
+                color-mix(in srgb, var(--vscode-focusBorder) 4%, var(--vscode-input-background) 96%) 100%);
+        box-shadow:
+            0 0 0 3px color-mix(in srgb, var(--vscode-focusBorder) 15%, transparent 85%),
+            0 2px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .mode-option.selected::before {
+        opacity: 1;
+    }
+
+    .mode-option-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .mode-radio {
+        position: relative;
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+
+    .mode-radio input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .radio-custom {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 18px;
+        height: 18px;
+        border: 2px solid var(--vscode-panel-border);
+        border-radius: 50%;
+        background: var(--vscode-input-background);
+        transition: all 0.2s ease;
+    }
+
+    .mode-radio input[type="radio"]:checked + .radio-custom {
+        border-color: var(--vscode-focusBorder);
+        background: linear-gradient(135deg,
+            var(--vscode-focusBorder) 0%,
+            color-mix(in srgb, var(--vscode-focusBorder) 80%, white 20%) 100%);
+    }
+
+    .radio-custom::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: white;
+        transform: translate(-50%, -50%) scale(0);
+        transition: transform 0.2s ease;
+    }
+
+    .mode-radio input[type="radio"]:checked + .radio-custom::after {
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    .mode-title {
+        font-weight: 600;
+        font-size: 15px;
+        color: var(--vscode-foreground);
+        letter-spacing: -0.1px;
+    }
+
+    .mode-option .mode-description {
+        color: var(--vscode-descriptionForeground);
+        font-size: 12px;
+        line-height: 1.4;
+        margin-left: 30px;
+    }
+
+    .mode-selection-actions {
+        padding: 20px 32px 16px 32px;
+        border-top: 1px solid color-mix(in srgb, var(--vscode-panel-border) 40%, transparent 60%);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background:
+            linear-gradient(to bottom,
+                transparent 0%,
+                color-mix(in srgb, var(--vscode-panel-background) 50%, transparent 50%) 100%);
+    }
+
+    .mode-selection-actions .btn {
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .mode-selection-actions .btn.outlined {
+        background: transparent;
+        color: var(--vscode-foreground);
+        border: 1px solid var(--vscode-panel-border);
+    }
+
+    .mode-selection-actions .btn.outlined:hover {
+        background: color-mix(in srgb, var(--vscode-panel-border) 20%, transparent 80%);
+        border-color: var(--vscode-focusBorder);
+    }
+
+    .mode-selection-actions .btn.primary {
+        background: linear-gradient(135deg,
+            var(--vscode-button-background) 0%,
+            color-mix(in srgb, var(--vscode-button-background) 85%, black 15%) 100%);
+        color: var(--vscode-button-foreground);
+        border: 1px solid var(--vscode-button-background);
+    }
+
+    .mode-selection-actions .btn.primary:hover {
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--vscode-button-background) 90%, white 10%) 0%,
+            var(--vscode-button-background) 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--vscode-button-background) 30%, transparent 70%);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+        .mode-selection-content {
+            width: 95vw;
+        }
+
+        .mode-selection-description,
+        .mode-selection-options,
+        .mode-selection-actions {
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+
+        .mode-option {
+            padding: 14px 16px;
+        }
+
+        .mode-title {
+            font-size: 14px;
+        }
+
+        .mode-option .mode-description {
+            font-size: 11px;
+            margin-left: 26px;
+        }
     }
 </style>`;
 

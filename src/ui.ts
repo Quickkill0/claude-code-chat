@@ -13,7 +13,7 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 <body>
 	<div class="header">
 		<div style="display: flex; align-items: center;">
-			<h2>Claude Code Chat</h2>
+			<h2 data-text="Claude Code Chat">Claude Code Chat</h2>
 			<!-- <div id="sessionInfo" class="session-badge" style="display: none;">
 				<span class="session-icon">💬</span>
 				<span id="sessionId">-</span>
@@ -75,10 +75,6 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 		<div class="input-container" id="inputContainer">
 			<div class="input-modes">
 				<div class="mode-toggle">
-					<span onclick="togglePlanMode()">Plan First</span>
-					<div class="mode-switch" id="planModeSwitch" onclick="togglePlanMode()"></div>
-				</div>
-				<div class="mode-toggle">
 					<span id="thinkingModeLabel" onclick="toggleThinkingMode()">Thinking Mode</span>
 					<div class="mode-switch" id="thinkingModeSwitch" onclick="toggleThinkingMode()"></div>
 				</div>
@@ -111,6 +107,12 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 							</button>
 							<button class="tools-btn" onclick="showAgentsModal()" title="Manage agents">
 								Agents
+								<svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+									<path d="M1 2.5l3 3 3-3"></path>
+								</svg>
+							</button>
+							<button class="tools-btn mode-selection-btn" onclick="showModeSelectionModal()" title="Select conversation mode" id="modeSelectionBtn">
+								<span id="currentModeText">Default</span>
 								<svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
 									<path d="M1 2.5l3 3 3-3"></path>
 								</svg>
@@ -721,6 +723,61 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 				<div class="thinking-modal-actions">
 					<button class="confirm-btn" onclick="confirmThinkingIntensity()">Confirm</button>
 				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Mode Selection modal -->
+	<div id="modeSelectionModal" class="tools-modal" style="display: none;">
+		<div class="tools-modal-content mode-selection-content">
+			<div class="tools-modal-header">
+				<span>Conversation Mode</span>
+				<button class="tools-close-btn" onclick="hideModeSelectionModal()">✕</button>
+			</div>
+			<div class="mode-selection-description">
+				Choose how Claude Code should handle your conversations and requests.
+			</div>
+			<div class="mode-selection-options">
+				<div class="mode-option" onclick="selectMode('default')" data-mode="default">
+					<div class="mode-option-header">
+						<div class="mode-radio">
+							<input type="radio" name="conversationMode" id="mode-default" value="default" checked>
+							<div class="radio-custom"></div>
+						</div>
+						<div class="mode-title">Default Mode</div>
+					</div>
+					<div class="mode-description">
+						Normal chat and coding assistance with full tool access and implementation capabilities.
+					</div>
+				</div>
+				<div class="mode-option" onclick="selectMode('chat')" data-mode="chat">
+					<div class="mode-option-header">
+						<div class="mode-radio">
+							<input type="radio" name="conversationMode" id="mode-chat" value="chat">
+							<div class="radio-custom"></div>
+						</div>
+						<div class="mode-title">Chat Mode</div>
+					</div>
+					<div class="mode-description">
+						Chat-only mode with no code implementation - perfect for discussions, planning, and Q&A.
+					</div>
+				</div>
+				<div class="mode-option" onclick="selectMode('plan')" data-mode="plan">
+					<div class="mode-option-header">
+						<div class="mode-radio">
+							<input type="radio" name="conversationMode" id="mode-plan" value="plan">
+							<div class="radio-custom"></div>
+						</div>
+						<div class="mode-title">Plan Mode</div>
+					</div>
+					<div class="mode-description">
+						Plan first before implementing - Claude will create detailed plans and ask for approval before making changes.
+					</div>
+				</div>
+			</div>
+			<div class="mode-selection-actions">
+				<button class="btn outlined" onclick="cancelModeSelection()">Cancel</button>
+				<button class="btn primary" onclick="confirmModeSelection()">Apply Mode</button>
 			</div>
 		</div>
 	</div>
