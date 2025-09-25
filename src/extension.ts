@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
-import getHtml from './ui';
+import getHtml from './ui/ui';
 import { SessionManager } from './SessionManager';
 import { ConversationManager, ConversationData } from './ConversationManager';
 import { PermissionManager, PermissionRequest } from './PermissionManager';

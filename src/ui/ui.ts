@@ -60,10 +60,6 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 		<div class="status ready" id="status" style="margin-bottom: 12px;">
 			<div class="status-indicator"></div>
 			<div class="status-text" id="statusText">Initializing...</div>
-			<div class="todo-display" id="todoDisplay" style="display: none;">
-				<span class="todo-icon" id="todoIcon">⏳</span>
-				<span class="todo-text" id="todoText"></span>
-			</div>
 			<button class="btn stop" id="stopBtn" onclick="stopRequest()" style="display: none;">
 				<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
 					<path d="M6 6h12v12H6z"/>

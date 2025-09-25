@@ -233,7 +233,6 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					}
 					contentDiv.innerHTML = todoHtml;
 					// Update the todo display at the top
-					updateTodoDisplay(data.rawInput.todos);
 				} else {
 					// Format raw input with expandable content for long values
 					// Use diff format for Edit, MultiEdit, and Write tools, regular format for others
@@ -791,7 +790,6 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			const text = messageInput.value.trim();
 			if (text || contextFiles.size > 0) {
 				// Clear todos when user sends a new message
-				updateTodoDisplay([]);
 
 				// Build message with context files
 				let fullMessage = '';
@@ -895,53 +893,6 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			statusDiv.className = \`status \${state}\`;
 		}
 
-		function updateTodoDisplay(todos) {
-			const todoDisplay = document.getElementById('todoDisplay');
-			const todoIcon = document.getElementById('todoIcon');
-			const todoText = document.getElementById('todoText');
-
-			if (!todos || todos.length === 0) {
-				todoDisplay.style.display = 'none';
-				return;
-			}
-
-			// Find the current todo (in_progress or next pending)
-			let currentTodo = todos.find(t => t.status === 'in_progress');
-			if (!currentTodo) {
-				currentTodo = todos.find(t => t.status === 'pending');
-			}
-
-			if (currentTodo) {
-				// Show the current todo
-				todoDisplay.style.display = 'flex';
-
-				// Set icon based on status
-				if (currentTodo.status === 'in_progress') {
-					todoIcon.textContent = '🔄';
-					todoText.textContent = currentTodo.activeForm || currentTodo.content;
-				} else {
-					todoIcon.textContent = '⏳';
-					todoText.textContent = currentTodo.content;
-				}
-
-				// Add progress indicator
-				const completedCount = todos.filter(t => t.status === 'completed').length;
-				const totalCount = todos.length;
-				if (totalCount > 1) {
-					todoText.textContent += \` (\${completedCount}/\${totalCount})\`;
-				}
-			} else {
-				// All todos completed or none active
-				const completedCount = todos.filter(t => t.status === 'completed').length;
-				if (completedCount === todos.length && todos.length > 0) {
-					todoDisplay.style.display = 'flex';
-					todoIcon.textContent = '✅';
-					todoText.textContent = \`All tasks completed (\${completedCount}/\${todos.length})\`;
-				} else {
-					todoDisplay.style.display = 'none';
-				}
-			}
-		}
 
 		function updateStatusWithTotals() {
 			if (isProcessing) {
@@ -2928,8 +2879,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					showSessionInfo(message.data.sessionId);
 					addMessage(\`📝 Resumed previous session\\n🆔 Session ID: \${message.data.sessionId}\\n💡 Your conversation history is preserved\`, 'system');
 					// Clear todo display
-					updateTodoDisplay([]);
-					break;
+						break;
 
 				case 'sessionCleared':
 					console.log('Session cleared');
@@ -2944,8 +2894,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					requestCount = 0;
 					updateStatusWithTotals();
 					// Clear todo display
-					updateTodoDisplay([]);
-					break;
+						break;
 					
 				case 'loginRequired':
 					sendStats('Login required');
@@ -3603,7 +3552,6 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			});
 
 			// Clear todo display when loading conversation
-			updateTodoDisplay([]);
 
 			// Hide conversation history and show chat
 			toggleConversationHistory();
