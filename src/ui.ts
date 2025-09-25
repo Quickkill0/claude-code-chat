@@ -75,7 +75,7 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 		<div class="input-container" id="inputContainer">
 			<div class="input-modes">
 				<div class="mode-toggle">
-					<span onclick="togglePlanMode()">Plan First</span>
+					<span onclick="togglePlanMode()">Plan Mode</span>
 					<div class="mode-switch" id="planModeSwitch" onclick="togglePlanMode()"></div>
 				</div>
 				<div class="mode-toggle">
