@@ -17,7 +17,6 @@ This workflow will:
 3. Create a comprehensive task document with technical details
 4. Define all missions upfront based on project analysis
 5. Set up progress tracking for incremental development
-6. Coordinate with specialized agents for implementation
 
 ## Workflow Details
 The create-task workflow follows AB Method principles:

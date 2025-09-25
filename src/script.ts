@@ -1637,18 +1637,6 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				return scopeMatch && searchMatch;
 			});
 
-			// Sort servers alphabetically by name (A-Z)
-			filteredServers.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
-
-			// For "all" tab, show installed servers at the top, but keep alphabetical order within each group
-			if (currentMCPScope === 'all') {
-				const installedServers = filteredServers.filter(server => server.installed);
-				const availableServers = filteredServers.filter(server => !server.installed);
-
-				// Both groups are already alphabetically sorted
-				filteredServers = [...installedServers, ...availableServers];
-			}
-
 			// Update stats
 			if (statsText) {
 				statsText.textContent = \`\${filteredServers.length} server\${filteredServers.length !== 1 ? 's' : ''}\`;
@@ -1693,7 +1681,8 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 								<div class="mcp-scope-selector">
 									<label for="scope-\${server.name}">Scope:</label>
 									<select id="scope-\${server.name}" class="mcp-scope-dropdown">
-										<option value="local" \${server.defaultScope === 'local' ? 'selected' : ''}>Project</option>
+										<option value="local" \${server.defaultScope === 'local' ? 'selected' : ''}>Local</option>
+										<option value="project" \${server.defaultScope === 'project' ? 'selected' : ''}>Project</option>
 										<option value="user" \${server.defaultScope === 'user' ? 'selected' : ''}>User</option>
 									</select>
 								</div>
@@ -2127,7 +2116,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					category: 'Database',
 					type: 'stdio',
 					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-mongodb'] },
-					defaultScope: 'local'
+					defaultScope: 'project'
 				},
 				{
 					name: 'qdrant',
@@ -2136,7 +2125,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					category: 'AI/ML',
 					type: 'stdio',
 					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-qdrant'] },
-					defaultScope: 'local'
+					defaultScope: 'project'
 				},
 				{
 					name: 'bigquery',
@@ -2181,7 +2170,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					category: 'Development',
 					type: 'stdio',
 					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-git'] },
-					defaultScope: 'local'
+					defaultScope: 'project'
 				},
 				{
 					name: 'slack',
@@ -2199,7 +2188,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					category: 'Database',
 					type: 'stdio',
 					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-sqlite'] },
-					defaultScope: 'local'
+					defaultScope: 'project'
 				},
 				{
 					name: 'postgres',
@@ -2208,7 +2197,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					category: 'Database',
 					type: 'stdio',
 					config: { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-postgres'] },
-					defaultScope: 'local'
+					defaultScope: 'project'
 				},
 				{
 					name: 'gdrive',

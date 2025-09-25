@@ -295,7 +295,8 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 				<div class="form-group">
 					<label for="customServerScope">Scope:</label>
 					<select id="customServerScope">
-						<option value="local">Project (Session only)</option>
+						<option value="local">Local (Session only)</option>
+						<option value="project">Project (Shared via .mcp.json)</option>
 						<option value="user">User (Global)</option>
 					</select>
 				</div>
