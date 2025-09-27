@@ -4238,7 +4238,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 						<div class="agent-actions-inline">
 							<button class="agent-action-btn" onclick="event.stopPropagation(); window.cloneAgent('\${escapedName}', '\${escapedScope}')">Clone</button>
 							<button class="agent-action-btn" onclick="event.stopPropagation(); window.exportAgent('\${escapedName}', '\${escapedScope}')">Export</button>
-							<button class="agent-action-btn" onclick="event.stopPropagation(); window.deleteAgent('\${escapedName}', '\${escapedScope}')">Delete</button>
+							<button class="agent-action-btn delete" onclick="event.stopPropagation(); window.deleteAgent('\${escapedName}', '\${escapedScope}')">Delete</button>
 						</div>
 					</div>
 				\`;

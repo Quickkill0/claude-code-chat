@@ -4552,6 +4552,12 @@ const styles = `
         border-color: var(--vscode-button-background);
     }
 
+    .agent-action-btn.delete:hover {
+        background: #e74c3c;
+        color: white;
+        border-color: #e74c3c;
+    }
+
     .agents-actions {
         padding: 16px 20px;
         border-top: 1px solid var(--vscode-panel-border);
