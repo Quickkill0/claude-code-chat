@@ -417,21 +417,30 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			// Special handling for Read tool with file_path
 			if (input.file_path && Object.keys(input).length === 1) {
 				const formattedPath = formatFilePath(input.file_path);
-				return '<div class="diff-file-path" onclick="openFileInEditor(\\\'' + escapeHtml(input.file_path) + '\\\')">' + formattedPath + '</div>';
+				return '<div class="diff-file-path clickable-file-path" data-file-path="' + escapeHtml(input.file_path) + '">' + formattedPath + '</div>';
 			}
 
 			let result = '';
 			let isFirst = true;
+			let offsetValue = null;
+
+			// First pass: find offset value if it exists
+			if (input.offset && typeof input.offset === 'number') {
+				offsetValue = input.offset;
+			}
+
 			for (const [key, value] of Object.entries(input)) {
 				const valueStr = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
-				
+
 				if (!isFirst) result += '\\n';
 				isFirst = false;
-				
+
 				// Special formatting for file_path in Read tool context
 				if (key === 'file_path') {
 					const formattedPath = formatFilePath(valueStr);
-					result += '<div class="diff-file-path" onclick="openFileInEditor(\\\'' + escapeHtml(valueStr) + '\\\')">' + formattedPath + '</div>';
+					const lineNumber = offsetValue ? offsetValue + 1 : null; // Convert 0-based offset to 1-based line number
+					result += '<div class="diff-file-path clickable-file-path" data-file-path="' + escapeHtml(valueStr) + '"' +
+							  (lineNumber ? ' data-line-number="' + lineNumber + '"' : '') + '>' + formattedPath + '</div>';
 				} else if (valueStr.length > 100) {
 					const truncated = valueStr.substring(0, 97) + '...';
 					const escapedValue = valueStr.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -694,10 +703,11 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			return div.innerHTML;
 		}
 
-		function openFileInEditor(filePath) {
+		function openFileInEditor(filePath, lineNumber) {
 			vscode.postMessage({
 				type: 'openFile',
-				filePath: filePath
+				filePath: filePath,
+				lineNumber: lineNumber
 			});
 		}
 
@@ -3193,6 +3203,19 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				document.querySelectorAll('.permission-menu-dropdown').forEach(dropdown => {
 					dropdown.style.display = 'none';
 				});
+			}
+		});
+
+		// Handle clicks on clickable file paths
+		document.addEventListener('click', function(event) {
+			const filePathElement = event.target.closest('.clickable-file-path');
+			if (filePathElement) {
+				const filePath = filePathElement.getAttribute('data-file-path');
+				const lineNumber = filePathElement.getAttribute('data-line-number');
+
+				if (filePath) {
+					openFileInEditor(filePath, lineNumber ? parseInt(lineNumber, 10) : undefined);
+				}
 			}
 		});
 

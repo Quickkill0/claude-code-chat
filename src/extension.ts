@@ -282,7 +282,7 @@ class ClaudeChatProvider {
 				this._configManager.dismissWSLAlert();
 				return;
 			case 'openFile':
-				this._openFileInEditor(message.filePath);
+				this._openFileInEditor(message.filePath, message.lineNumber);
 				return;
 			case 'createImageFile':
 				this._createImageFile(message.imageData, message.imageType);
@@ -1143,11 +1143,18 @@ class ClaudeChatProvider {
 		});
 	}
 
-	private async _openFileInEditor(filePath: string) {
+	private async _openFileInEditor(filePath: string, lineNumber?: number) {
 		try {
 			const uri = vscode.Uri.file(filePath);
 			const document = await vscode.workspace.openTextDocument(uri);
-			await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
+			const editor = await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
+
+			// If line number is provided, scroll to that line
+			if (lineNumber && lineNumber > 0) {
+				const position = new vscode.Position(Math.max(0, lineNumber - 1), 0);
+				editor.selection = new vscode.Selection(position, position);
+				editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+			}
 		} catch (error) {
 			vscode.window.showErrorMessage(`Failed to open file: ${filePath}`);
 			console.error('Error opening file:', error);

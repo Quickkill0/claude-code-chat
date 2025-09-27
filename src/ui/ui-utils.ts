@@ -53,14 +53,33 @@ export function formatToolInputUI(input: any): string {
 	// Special handling for Read tool with file_path
 	if (input.file_path && Object.keys(input).length === 1) {
 		const formattedPath = formatFilePath(input.file_path);
-		return `<div class="tool-input-file-path" onclick="openFileInEditor('${escapeHtml(input.file_path)}')">📁 ${formattedPath}</div>`;
+		return `<div class="tool-input-file-path clickable-file-path" data-file-path="${escapeHtml(input.file_path)}">📁 ${formattedPath}</div>`;
+	}
+
+	// Handle Read tool with file_path and offset
+	if (input.file_path && (input.offset !== undefined || input.limit !== undefined)) {
+		const formattedPath = formatFilePath(input.file_path);
+		const lineNumber = input.offset ? input.offset + 1 : null; // Convert 0-based offset to 1-based line number
+
+		let result = `<div class="tool-input-file-path clickable-file-path" data-file-path="${escapeHtml(input.file_path)}"` +
+					 (lineNumber ? ` data-line-number="${lineNumber}"` : '') + `>📁 ${formattedPath}</div>`;
+
+		// Add offset and limit info
+		if (input.offset !== undefined) {
+			result += `<div class="tool-input-meta">offset: ${input.offset}</div>`;
+		}
+		if (input.limit !== undefined) {
+			result += `<div class="tool-input-meta">limit: ${input.limit}</div>`;
+		}
+
+		return result;
 	}
 
 	// Special handling for Write tool
 	if (input.file_path && input.content && Object.keys(input).length === 2) {
 		const formattedPath = formatFilePath(input.file_path);
 		const contentLength = input.content ? input.content.length : 0;
-		return `<div class="tool-input-file-path" onclick="openFileInEditor('${escapeHtml(input.file_path)}')">📄 ${formattedPath}</div>` +
+		return `<div class="tool-input-file-path clickable-file-path" data-file-path="${escapeHtml(input.file_path)}">📄 ${formattedPath}</div>` +
 			   `<div class="tool-input-meta">Writing ${contentLength} characters</div>`;
 	}
 
@@ -99,7 +118,7 @@ export function formatEditToolDiff(input: any): string {
 
 	// Format file path with better display
 	const formattedPath = formatFilePath(input.file_path);
-	let result = `<div class="diff-file-path" onclick="openFileInEditor('${escapeHtml(input.file_path)}')">${formattedPath}</div>\n`;
+	let result = `<div class="diff-file-path clickable-file-path" data-file-path="${escapeHtml(input.file_path)}">${formattedPath}</div>\n`;
 
 	// Create diff view
 	const oldLines = input.old_string.split('\n');
@@ -159,7 +178,7 @@ export function formatMultiEditToolDiff(input: any): string {
 	}
 
 	const formattedPath = formatFilePath(input.file_path);
-	let result = `<div class="diff-file-path" onclick="openFileInEditor('${escapeHtml(input.file_path)}')">${formattedPath}</div>\n`;
+	let result = `<div class="diff-file-path clickable-file-path" data-file-path="${escapeHtml(input.file_path)}">${formattedPath}</div>\n`;
 
 	result += `<div class="multi-edit-summary">Making ${input.edits.length} edit${input.edits.length !== 1 ? 's' : ''}</div>`;
 
@@ -215,7 +234,7 @@ export function formatWriteToolDiff(input: any): string {
 	}
 
 	const formattedPath = formatFilePath(input.file_path);
-	let result = `<div class="diff-file-path" onclick="openFileInEditor('${escapeHtml(input.file_path)}')">${formattedPath}</div>\n`;
+	let result = `<div class="diff-file-path clickable-file-path" data-file-path="${escapeHtml(input.file_path)}">${formattedPath}</div>\n`;
 
 	const lines = input.content.split('\n');
 	const maxLines = 10;
