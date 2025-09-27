@@ -3991,7 +3991,7 @@ const styles = `
     }
 
     .mcp-actions {
-        padding: 16px 0 0 0;
+        padding: 16px 16px 16px 0;
         border-top: 1px solid var(--vscode-panel-border);
         display: flex;
         gap: 8px;

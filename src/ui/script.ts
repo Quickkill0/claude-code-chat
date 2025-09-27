@@ -1598,6 +1598,21 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				return scopeMatch && searchMatch;
 			});
 
+			// Sort servers: for "All Servers" tab, installed first then alphabetically, otherwise just alphabetically
+			if (currentMCPScope === 'all') {
+				filteredServers.sort((a, b) => {
+					// First sort by installation status (installed first)
+					if (a.installed !== b.installed) {
+						return b.installed - a.installed; // installed (true) comes before not installed (false)
+					}
+					// Then sort alphabetically by name
+					return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+				});
+			} else {
+				// For installed/available tabs, just sort alphabetically
+				filteredServers.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+			}
+
 			// Update stats
 			if (statsText) {
 				statsText.textContent = \`\${filteredServers.length} server\${filteredServers.length !== 1 ? 's' : ''}\`;
