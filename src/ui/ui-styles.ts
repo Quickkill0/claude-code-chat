@@ -3122,8 +3122,8 @@ const styles = `
     }
 
     .status-indicator {
-        width: 10px;
-        height: 10px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         flex-shrink: 0;
         position: relative;
@@ -3136,8 +3136,8 @@ const styles = `
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        width: 16px;
-        height: 16px;
+        width: 12px;
+        height: 12px;
         border-radius: 50%;
         opacity: 0.3;
         pointer-events: none;
@@ -3176,7 +3176,7 @@ const styles = `
 
     @keyframes pulse {
         0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.1); }
+        50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.16); }
     }
 
     .status-text {
