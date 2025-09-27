@@ -196,7 +196,7 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 			</div>
 			<div class="file-picker-footer">
 				<button class="btn outlined" onclick="cancelFilePicker()">Cancel</button>
-				<button class="btn primary" id="addSelectedBtn" onclick="addSelectedFiles()" disabled>Add Selected</button>
+				<button class="btn outlined" id="addSelectedBtn" onclick="addSelectedFiles()" disabled>Add Selected</button>
 			</div>
 		</div>
 	</div>
@@ -325,8 +325,7 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 					<textarea id="customServerHeaders" placeholder="Authorization=Bearer token&#10;X-API-Key=key" rows="3"></textarea>
 				</div>
 				<div class="form-buttons">
-					<button class="btn primary" onclick="saveCustomMCPServer()">Add Server</button>
-					<button class="btn outlined" onclick="hideCustomMCPModal()">Cancel</button>
+					<button class="btn outlined" onclick="saveCustomMCPServer()">Add Server</button>
 				</div>
 			</div>
 		</div>
@@ -356,23 +355,23 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 
 			<!-- Action buttons -->
 			<div class="agents-actions">
-				<button class="btn primary" onclick="showCreateAgentModal()">
+				<button class="btn outlined" onclick="showCreateAgentModal()">
 					<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
 						<path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 					</svg>
 					Create Agent
-				</button>
-				<button class="btn outlined" onclick="importAgent()">
-					<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-						<path d="M6 1v6M3 4l3-3 3 3M1 10h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-					</svg>
-					Import
 				</button>
 				<button class="btn outlined" onclick="showAIGenerateModal()">
 					<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
 						<path d="M6 2L7 4H10L8 6L9 9L6 7L3 9L4 6L2 4H5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
 					</svg>
 					AI Generate
+				</button>
+				<button class="btn outlined" onclick="importAgent()">
+					<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+						<path d="M6 1v6M3 4l3-3 3 3M1 10h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+					</svg>
+					Import
 				</button>
 			</div>
 		</div>
@@ -430,8 +429,7 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 					<textarea id="agentSystemPrompt" placeholder="You are an expert code reviewer..." rows="8" required></textarea>
 				</div>
 				<div class="form-buttons">
-					<button class="btn primary" onclick="saveAgent()">Save Agent</button>
-					<button class="btn outlined" onclick="hideAgentFormModal()">Cancel</button>
+					<button class="btn outlined" onclick="saveAgent()">Save Agent</button>
 				</div>
 			</div>
 		</div>
@@ -457,8 +455,7 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 					</select>
 				</div>
 				<div class="form-buttons">
-					<button class="btn primary" onclick="generateAgentWithAI()">Generate Agent</button>
-					<button class="btn outlined" onclick="hideAIGenerateModal()">Cancel</button>
+					<button class="btn outlined" onclick="generateAgentWithAI()">Generate Agent</button>
 				</div>
 			</div>
 		</div>

@@ -4509,6 +4509,7 @@ const styles = `
         border-top: 1px solid var(--vscode-panel-border);
         display: flex;
         gap: 8px;
+        justify-content: flex-end;
     }
 
     .agents-empty {
