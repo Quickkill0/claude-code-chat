@@ -611,9 +611,10 @@ class ClaudeChatProvider {
 
 	// Event handlers for manager callbacks
 	private _handleSessionCleared() {
-		// Clear conversations and commits
+		// Clear conversations but keep commits for session persistence
 		this._conversationManager.clearConversation();
-		this._backupManager.clearCommits();
+		// DON'T clear commits - keep checkpoints across sessions
+		// this._backupManager.clearCommits();
 
 		// Reset counters in message handler
 		this._messageHandler.resetCounters();

@@ -3234,6 +3234,17 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			}
 		});
 
+		// Handle clicks on checkpoint restore buttons
+		document.addEventListener('click', function(event) {
+			const restoreBtn = event.target.closest('.checkpoint-restore-btn');
+			if (restoreBtn) {
+				const commitSha = restoreBtn.getAttribute('data-sha');
+				if (commitSha) {
+					restoreCheckpoint(commitSha);
+				}
+			}
+		});
+
 		// Session management functions
 		function newSession() {
 			sendStats('New chat');
@@ -3308,7 +3319,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				<div class="checkpoint-message">\${escapeHtml(messagePreview)}</div>
 				<div class="checkpoint-actions">
 					<span class="checkpoint-sha">\${shortSha}</span>
-					<button class="checkpoint-restore-btn" onclick="restoreCheckpoint('\${checkpoint.sha}')">
+					<button class="checkpoint-restore-btn" data-sha="\${checkpoint.sha}">
 						Restore
 					</button>
 				</div>
@@ -3318,13 +3329,11 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		}
 
 		function restoreCheckpoint(sha) {
-			if (confirm('Are you sure you want to restore to this checkpoint? This will revert all changes made after this point.')) {
-				vscode.postMessage({
-					type: 'restoreCommit',
-					commitSha: sha
-				});
-				closeCheckpointPanel();
-			}
+			vscode.postMessage({
+				type: 'restoreCommit',
+				commitSha: sha
+			});
+			closeCheckpointPanel();
 		}
 
 		function getTimeAgo(date) {
