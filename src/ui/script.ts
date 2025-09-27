@@ -3090,7 +3090,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				case 'agentError':
 					showNotification(message.error || 'Agent operation failed', 'error');
 					// Reset the generate button if it was generating
-					const generateBtn = document.querySelector('#aiGenerateModal button.primary');
+					const generateBtn = document.querySelector('#aiGenerateModal button.btn.outlined');
 					if (generateBtn && generateBtn.disabled) {
 						generateBtn.disabled = false;
 						generateBtn.textContent = 'Generate Agent';
@@ -3098,7 +3098,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					break;
 				case 'agentGenerated':
 					// Reset the generate button
-					const genBtn = document.querySelector('#aiGenerateModal button.primary');
+					const genBtn = document.querySelector('#aiGenerateModal button.btn.outlined');
 					if (genBtn) {
 						genBtn.disabled = false;
 						genBtn.textContent = 'Generate Agent';
@@ -4412,7 +4412,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		function hideAIGenerateModal() {
 			document.getElementById('aiGenerateModal').style.display = 'none';
 			// Reset the generate button state
-			const generateBtn = document.querySelector('#aiGenerateModal button.primary');
+			const generateBtn = document.querySelector('#aiGenerateModal button.btn.outlined');
 			if (generateBtn) {
 				generateBtn.disabled = false;
 				generateBtn.textContent = 'Generate Agent';
@@ -4435,7 +4435,7 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			}
 
 			// Show loading state in the modal
-			const generateBtn = document.querySelector('#aiGenerateModal button.primary');
+			const generateBtn = document.querySelector('#aiGenerateModal button.btn.outlined');
 			const originalText = generateBtn.textContent;
 			generateBtn.disabled = true;
 			generateBtn.textContent = 'Generating...';
