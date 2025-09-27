@@ -2565,17 +2565,48 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			hideModelModal();
 		}
 
+		function toggleModelDropdown() {
+			const dropdown = document.getElementById('modelDropdown');
+			const isVisible = dropdown.style.display === 'block';
+
+			// Close all other dropdowns first
+			const allDropdowns = document.querySelectorAll('.model-dropdown');
+			allDropdowns.forEach(d => d.style.display = 'none');
+
+			// Toggle this dropdown
+			dropdown.style.display = isVisible ? 'none' : 'block';
+		}
+
+		function selectModelFromDropdown(model) {
+			selectModel(model);
+			// Close the dropdown
+			document.getElementById('modelDropdown').style.display = 'none';
+		}
+
 		function selectModel(model, fromBackend = false) {
 			currentModel = model;
-			
-			// Update the display text
+
+			// Update the displayed text
 			const displayNames = {
 				'opus': 'Opus',
 				'sonnet': 'Sonnet',
 				'sonnet1m': 'Sonnet 1M',
-				'default': 'Model'
+				'default': 'Default'
 			};
-			document.getElementById('selectedModel').textContent = displayNames[model] || model;
+
+			const selectedText = document.getElementById('selectedModelText');
+			if (selectedText) {
+				selectedText.textContent = displayNames[model] || model;
+			}
+
+			// Update selected state in dropdown options
+			const options = document.querySelectorAll('.model-option');
+			options.forEach(option => {
+				option.classList.remove('selected');
+				if (option.dataset.value === model) {
+					option.classList.add('selected');
+				}
+			});
 			
 			// Only send model selection to VS Code extension if not from backend
 			if (!fromBackend) {
@@ -2597,15 +2628,17 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			hideModelModal();
 		}
 
-		// Initialize model display without sending message
+		// Initialize model dropdown without sending message
 		currentModel = 'opus';
-		const displayNames = {
-			'opus': 'Opus',
-			'sonnet': 'Sonnet',
-			'sonnet1m': 'Sonnet 1M',
-			'default': 'Default'
-		};
-		document.getElementById('selectedModel').textContent = displayNames[currentModel];
+		selectModel(currentModel, true);
+
+		// Close dropdown when clicking outside
+		document.addEventListener('click', (e) => {
+			const modelWrapper = document.querySelector('.model-selector-wrapper');
+			if (modelWrapper && !modelWrapper.contains(e.target)) {
+				document.getElementById('modelDropdown').style.display = 'none';
+			}
+		});
 
 		// Close model modal when clicking outside
 		document.getElementById('modelModal').addEventListener('click', (e) => {

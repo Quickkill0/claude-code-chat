@@ -57,7 +57,7 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 			</div>
 		</div>
 		
-		<div class="status ready" id="status" style="margin-bottom: 12px;">
+		<div class="status ready" id="status">
 			<div class="status-indicator"></div>
 			<div class="status-text" id="statusText">Initializing...</div>
 			<button class="btn stop" id="stopBtn" onclick="stopRequest()" style="display: none;">
@@ -93,12 +93,20 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 					<textarea class="input-field" id="messageInput" placeholder="Type your message to Claude Code..." rows="1"></textarea>
 					<div class="input-controls">
 						<div class="left-controls">
-							<button class="model-selector" id="modelSelector" onclick="showModelSelector()" title="Select model">
-								<span id="selectedModel">Opus</span>
-								<svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
-									<path d="M1 2.5l3 3 3-3"></path>
-								</svg>
-							</button>
+							<div class="model-selector-wrapper">
+								<button class="model-selector" id="modelSelector" onclick="toggleModelDropdown()" title="Select model">
+									<span id="selectedModelText">Opus</span>
+									<svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+										<path d="M1 2.5l3 3 3-3"></path>
+									</svg>
+								</button>
+								<div class="model-dropdown" id="modelDropdown" style="display: none;">
+									<div class="model-option" data-value="opus" onclick="selectModelFromDropdown('opus')">Opus</div>
+									<div class="model-option" data-value="sonnet" onclick="selectModelFromDropdown('sonnet')">Sonnet</div>
+									<div class="model-option" data-value="sonnet1m" onclick="selectModelFromDropdown('sonnet1m')">Sonnet 1M</div>
+									<div class="model-option" data-value="default" onclick="selectModelFromDropdown('default')">Default</div>
+								</div>
+							</div>
 							<button class="tools-btn" onclick="showMCPModal()" title="Configure MCP servers">
 								MCP
 								<svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">

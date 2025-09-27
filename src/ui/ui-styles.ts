@@ -1554,6 +1554,7 @@ const styles = `
         align-items: center;
         padding-bottom: 5px;
         font-size: 9.5px;
+        margin-left: 16px;
     }
 
     .mode-toggle {
@@ -1844,10 +1845,15 @@ const styles = `
         gap: 8px;
     }
 
+    .model-selector-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
     .model-selector {
         background-color: rgba(128, 128, 128, 0.15);
         color: var(--vscode-foreground);
-        border: none;
+        border: 1px solid rgba(128, 128, 128, 0.3);
         padding: 3px 7px;
         border-radius: 4px;
         cursor: pointer;
@@ -1863,6 +1869,48 @@ const styles = `
     .model-selector:hover {
         background-color: rgba(128, 128, 128, 0.25);
         opacity: 1;
+        border-color: rgba(128, 128, 128, 0.5);
+    }
+
+    .model-selector:focus {
+        outline: none;
+        border-color: var(--vscode-focusBorder);
+        box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+    }
+
+    .model-dropdown {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        right: 0;
+        background-color: var(--vscode-dropdown-background, #3c3c3c);
+        border: 1px solid var(--vscode-dropdown-border, #454545);
+        border-radius: 4px;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        margin-bottom: 2px;
+    }
+
+    .model-option {
+        padding: 6px 8px;
+        cursor: pointer;
+        color: var(--vscode-dropdown-foreground, #ffffff);
+        font-size: 11px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        transition: background-color 0.15s ease;
+    }
+
+    .model-option:last-child {
+        border-bottom: none;
+    }
+
+    .model-option:hover {
+        background-color: var(--vscode-list-hoverBackground, #2a2d2e);
+    }
+
+    .model-option.selected {
+        background-color: var(--vscode-list-activeSelectionBackground, #094771);
+        color: var(--vscode-list-activeSelectionForeground, #ffffff);
     }
 
     .tools-btn {
