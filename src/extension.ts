@@ -15,6 +15,11 @@ export function activate(context: vscode.ExtensionContext) {
 	console.log('Claude Code Chat extension is being activated!');
 	const provider = new ClaudeChatProvider(context.extensionUri, context);
 
+	// Ensure MCP configuration is initialized at startup
+	provider.ensureConfigInitialized().catch(error => {
+		console.error('Failed to initialize MCP configuration at startup:', error);
+	});
+
 	const disposable = vscode.commands.registerCommand('claude-code-chat.openChat', (column?: vscode.ViewColumn) => {
 		console.log('Claude Code Chat command executed!');
 		provider.show(column);
@@ -142,6 +147,15 @@ class ClaudeChatProvider {
 		// Resume session from latest conversation
 		const latestConversation = this._conversationManager.getLatestConversation();
 		this._sessionManager.setSessionId(latestConversation?.sessionId);
+	}
+
+	/**
+	 * Ensures that configuration initialization is complete
+	 */
+	public async ensureConfigInitialized(): Promise<void> {
+		console.log('ClaudeChatProvider: Ensuring MCP configuration is initialized...');
+		await this._configManager.ensureInitialized();
+		console.log('ClaudeChatProvider: MCP configuration initialization verified');
 	}
 
 	public show(column: vscode.ViewColumn | vscode.Uri = vscode.ViewColumn.Two) {
@@ -1265,6 +1279,15 @@ class ClaudeChatProvider {
 
 	private async _deleteMCPServer(name: string): Promise<void> {
 		try {
+			// Prevent deletion of built-in permissions server
+			if (name === 'claude-code-chat-permissions') {
+				this._postMessage({
+					type: 'mcpServerError',
+					data: { error: 'Cannot delete built-in permissions server' }
+				});
+				return;
+			}
+
 			// Use unified method that tries CLI first, falls back to JSON
 			await this._configManager.removeMCPServerUnified(name);
 			this._postMessage({ type: 'mcpServerDeleted', data: { name } });

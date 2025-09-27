@@ -1395,10 +1395,20 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		}
 
 		function deleteMCPServer(serverName) {
+			// Prevent deletion of built-in permissions server
+			if (serverName === 'claude-code-chat-permissions') {
+				const notification = document.createElement('div');
+				notification.textContent = 'Cannot delete built-in permissions server';
+				notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: var(--vscode-inputValidation-errorBackground); color: var(--vscode-inputValidation-errorForeground); padding: 8px 12px; border-radius: 4px; z-index: 9999;';
+				document.body.appendChild(notification);
+				setTimeout(() => notification.remove(), 3000);
+				return;
+			}
+
 			// Just delete without confirmation
-			vscode.postMessage({ 
-				type: 'deleteMCPServer', 
-				name: serverName 
+			vscode.postMessage({
+				type: 'deleteMCPServer',
+				name: serverName
 			});
 		}
 
@@ -1495,20 +1505,25 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				return;
 			}
 
-			for (const [name, config] of Object.entries(servers)) {				
+			for (const [name, config] of Object.entries(servers)) {
 				const serverItem = document.createElement('div');
 				serverItem.className = 'mcp-server-item';
-				
+
 				// Defensive check for config structure
 				if (!config || typeof config !== 'object') {
 					console.error('Invalid config for server:', name, config);
 					continue;
 				}
-				
+
 				const serverType = config.type || 'stdio';
+				const isBuiltinPermissions = name === 'claude-code-chat-permissions' && config.builtin === true;
+				const scope = config.scope || 'local';
+
 				let configDisplay = '';
-				
-				if (serverType === 'stdio') {
+
+				if (isBuiltinPermissions) {
+					configDisplay = config.description || 'Built-in permissions handler for Claude Code Chat';
+				} else if (serverType === 'stdio') {
 					configDisplay = \`Command: \${config.command || 'Not specified'}\`;
 					if (config.args && Array.isArray(config.args)) {
 						configDisplay += \`<br>Args: \${config.args.join(' ')}\`;
@@ -1519,18 +1534,36 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					configDisplay = \`Type: \${serverType}\`;
 				}
 
-				serverItem.innerHTML = \`
-					<div class="server-info">
-						<div class="server-name">\${name}</div>
-						<div class="server-type">\${serverType.toUpperCase()}</div>
-						<div class="server-config">\${configDisplay}</div>
-					</div>
-					<div class="server-actions">
+				// Add special styling for built-in permissions server
+				if (isBuiltinPermissions) {
+					serverItem.classList.add('builtin-server');
+				}
+
+				const scopeBadge = scope === 'project' ? '<span class="scope-badge project">Project</span>' :
+								 scope === 'user' ? '<span class="scope-badge user">User</span>' :
+								 '<span class="scope-badge local">Local</span>';
+
+				const serverActions = isBuiltinPermissions ?
+					\`<div class="server-actions">
+						<span class="builtin-label">Built-in</span>
+					</div>\` :
+					\`<div class="server-actions">
 						<button class="btn outlined server-edit-btn" onclick="editMCPServer('\${name}', \${JSON.stringify(config).replace(/"/g, '&quot;')})">Edit</button>
 						<button class="btn outlined server-delete-btn" onclick="deleteMCPServer('\${name}')">Delete</button>
+					</div>\`;
+
+				serverItem.innerHTML = \`
+					<div class="server-info">
+						<div class="server-name-row">
+							<div class="server-name">\${name}</div>
+							\${scopeBadge}
+						</div>
+						<div class="server-type">\${isBuiltinPermissions ? 'PERMISSIONS' : serverType.toUpperCase()}</div>
+						<div class="server-config">\${configDisplay}</div>
 					</div>
+					\${serverActions}
 				\`;
-				
+
 				serversList.appendChild(serverItem);
 			}
 		}

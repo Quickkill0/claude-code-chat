@@ -3586,6 +3586,60 @@ const styles = `
         flex-shrink: 0;
     }
 
+    /* Enhanced MCP server styles */
+    .server-name-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .scope-badge {
+        font-size: 11px;
+        font-weight: 500;
+        padding: 3px 8px;
+        border-radius: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .scope-badge.project {
+        background-color: var(--vscode-charts-blue);
+        color: var(--vscode-editor-background);
+    }
+
+    .scope-badge.user {
+        background-color: var(--vscode-charts-green);
+        color: var(--vscode-editor-background);
+    }
+
+    .scope-badge.local {
+        background-color: var(--vscode-charts-orange);
+        color: var(--vscode-editor-background);
+    }
+
+    .builtin-server {
+        border-color: var(--vscode-charts-blue);
+        background-color: rgba(0, 122, 204, 0.05);
+    }
+
+    .builtin-server:hover {
+        border-color: var(--vscode-charts-blue);
+        background-color: rgba(0, 122, 204, 0.1);
+        box-shadow: 0 2px 8px rgba(0, 122, 204, 0.15);
+    }
+
+    .builtin-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--vscode-charts-blue);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 4px 8px;
+        background-color: rgba(0, 122, 204, 0.1);
+        border-radius: 4px;
+    }
+
     .server-edit-btn {
         padding: 8px 16px;
         font-size: 13px;

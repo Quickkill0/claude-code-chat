@@ -9,11 +9,20 @@ const execAsync = promisify(cp.exec);
  * Manages MCP server configuration and VS Code settings
  */
 export class ConfigManager {
+	private _initializationPromise: Promise<void>;
+
 	constructor(
 		private readonly _context: vscode.ExtensionContext,
 		private readonly _extensionUri: vscode.Uri
 	) {
-		this._initializeMCPConfig();
+		this._initializationPromise = this._initializeMCPConfig();
+	}
+
+	/**
+	 * Ensures that MCP configuration initialization is complete
+	 */
+	async ensureInitialized(): Promise<void> {
+		await this._initializationPromise;
 	}
 
 	/**
@@ -21,84 +30,133 @@ export class ConfigManager {
 	 */
 	private async _initializeMCPConfig(): Promise<void> {
 		try {
-			const storagePath = this._context.storageUri?.fsPath;
-			if (!storagePath) { return; }
+			console.log('ConfigManager: Starting MCP configuration initialization...');
+			// Initialize both user-level and project-level MCP configurations
+			await this._initializeUserMCPConfig();
+			await this._initializeProjectMCPConfig();
+			console.log('ConfigManager: MCP configuration initialization completed successfully');
+		} catch (error: any) {
+			console.error('Failed to initialize MCP config:', error.message);
+			throw error;
+		}
+	}
 
-			// Create MCP config directory
-			const mcpConfigDir = path.join(storagePath, 'mcp');
-			try {
-				await vscode.workspace.fs.stat(vscode.Uri.file(mcpConfigDir));
-			} catch {
-				await vscode.workspace.fs.createDirectory(vscode.Uri.file(mcpConfigDir));
-				console.log(`Created MCP config directory at: ${mcpConfigDir}`);
-			}
+	/**
+	 * Initializes user-level MCP configuration (for user-installed servers)
+	 */
+	private async _initializeUserMCPConfig(): Promise<void> {
+		const storagePath = this._context.storageUri?.fsPath;
+		if (!storagePath) { return; }
 
-			// Create or update mcp-servers.json with permissions server, preserving existing servers
-			const mcpConfigPath = path.join(mcpConfigDir, 'mcp-servers.json');
+		// Create MCP config directory
+		const mcpConfigDir = path.join(storagePath, 'mcp');
+		try {
+			await vscode.workspace.fs.stat(vscode.Uri.file(mcpConfigDir));
+		} catch {
+			await vscode.workspace.fs.createDirectory(vscode.Uri.file(mcpConfigDir));
+			console.log(`Created MCP config directory at: ${mcpConfigDir}`);
+		}
 
-			// Try to find mcp-permissions.js in the correct location
-			let mcpPermissionsJsPath = path.join(this._extensionUri.fsPath, 'claude-code-chat-permissions-mcp', 'dist', 'mcp-permissions.js');
+		// Create or update mcp-servers.json for user-level servers
+		const mcpConfigPath = path.join(mcpConfigDir, 'mcp-servers.json');
+		const mcpConfigUri = vscode.Uri.file(mcpConfigPath);
 
-			// Check if file exists in the mcp subdirectory
+		let mcpConfig: any = { mcpServers: {} };
+		try {
+			const existingContent = await vscode.workspace.fs.readFile(mcpConfigUri);
+			mcpConfig = JSON.parse(new TextDecoder().decode(existingContent));
+			console.log('Loaded existing user MCP config');
+		} catch {
+			console.log('No existing user MCP config found, creating new one');
+		}
+
+		// Ensure mcpServers exists
+		if (!mcpConfig.mcpServers) {
+			mcpConfig.mcpServers = {};
+		}
+
+		const configContent = new TextEncoder().encode(JSON.stringify(mcpConfig, null, 2));
+		await vscode.workspace.fs.writeFile(mcpConfigUri, configContent);
+		console.log(`Updated user MCP config at: ${mcpConfigPath}`);
+	}
+
+	/**
+	 * Initializes project-level MCP configuration with permissions server
+	 */
+	private async _initializeProjectMCPConfig(): Promise<void> {
+		// Get workspace root folder
+		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+		if (!workspaceFolder) {
+			console.log('ConfigManager: No workspace folder found, skipping project MCP config');
+			return;
+		}
+
+		const projectMcpPath = path.join(workspaceFolder.uri.fsPath, '.mcp.json');
+		const projectMcpUri = vscode.Uri.file(projectMcpPath);
+		console.log(`ConfigManager: Initializing project MCP config at: ${projectMcpPath}`);
+
+		// Try to find mcp-permissions.js in the correct location
+		let mcpPermissionsJsPath = path.join(this._extensionUri.fsPath, 'claude-code-chat-permissions-mcp', 'dist', 'mcp-permissions.js');
+
+		// Check if file exists in the mcp subdirectory
+		try {
+			await vscode.workspace.fs.stat(vscode.Uri.file(mcpPermissionsJsPath));
+		} catch {
+			// Try the compiled version path for different build configurations
+			mcpPermissionsJsPath = path.join(this._extensionUri.fsPath, 'claude-code-chat-permissions-mcp', 'mcp-permissions.js');
 			try {
 				await vscode.workspace.fs.stat(vscode.Uri.file(mcpPermissionsJsPath));
 			} catch {
-				// Try the compiled version path for different build configurations
-				mcpPermissionsJsPath = path.join(this._extensionUri.fsPath, 'claude-code-chat-permissions-mcp', 'mcp-permissions.js');
-				try {
-					await vscode.workspace.fs.stat(vscode.Uri.file(mcpPermissionsJsPath));
-				} catch {
-					console.error('mcp-permissions.js not found in either location');
-					console.error('Tried:', path.join(this._extensionUri.fsPath, 'claude-code-chat-permissions-mcp', 'dist', 'mcp-permissions.js'));
-					console.error('Tried:', mcpPermissionsJsPath);
-					return;
-				}
+				console.error('mcp-permissions.js not found in either location');
+				console.error('Tried:', path.join(this._extensionUri.fsPath, 'claude-code-chat-permissions-mcp', 'dist', 'mcp-permissions.js'));
+				console.error('Tried:', mcpPermissionsJsPath);
+				return;
 			}
-
-			const mcpPermissionsPath = this.convertToWSLPath(mcpPermissionsJsPath);
-			const permissionRequestsPath = this.convertToWSLPath(path.join(storagePath, 'permission-requests'));
-
-			// Load existing config or create new one
-			let mcpConfig: any = { mcpServers: {} };
-			const mcpConfigUri = vscode.Uri.file(mcpConfigPath);
-
-			try {
-				const existingContent = await vscode.workspace.fs.readFile(mcpConfigUri);
-				mcpConfig = JSON.parse(new TextDecoder().decode(existingContent));
-				console.log('Loaded existing MCP config, preserving user servers');
-			} catch {
-				console.log('No existing MCP config found, creating new one');
-			}
-
-			// Ensure mcpServers exists
-			if (!mcpConfig.mcpServers) {
-				mcpConfig.mcpServers = {};
-			}
-
-			// Add or update the permissions server entry (only if not in YOLO mode)
-			const config = vscode.workspace.getConfiguration('claudeCodeChat');
-			const yoloMode = config.get<boolean>('permissions.yoloMode', false);
-
-			if (!yoloMode) {
-				mcpConfig.mcpServers['claude-code-chat-permissions'] = {
-					command: 'node',
-					args: [mcpPermissionsPath],
-					env: {
-						CLAUDE_PERMISSIONS_PATH: permissionRequestsPath
-					}
-				};
-			} else {
-				// Remove permissions server if YOLO mode is enabled
-				delete mcpConfig.mcpServers['claude-code-chat-permissions'];
-			}
-
-			const configContent = new TextEncoder().encode(JSON.stringify(mcpConfig, null, 2));
-			await vscode.workspace.fs.writeFile(mcpConfigUri, configContent);
-
-			console.log(`Updated MCP config at: ${mcpConfigPath}`);
-		} catch (error: any) {
-			console.error('Failed to initialize MCP config:', error.message);
 		}
+
+		const storagePath = this._context.storageUri?.fsPath;
+		const mcpPermissionsPath = this.convertToWSLPath(mcpPermissionsJsPath);
+		const permissionRequestsPath = this.convertToWSLPath(path.join(storagePath || '', 'permission-requests'));
+
+		// Load existing project .mcp.json or create new one
+		let projectMcpConfig: any = { mcpServers: {} };
+		try {
+			const existingContent = await vscode.workspace.fs.readFile(projectMcpUri);
+			projectMcpConfig = JSON.parse(new TextDecoder().decode(existingContent));
+			console.log('Loaded existing project .mcp.json config');
+		} catch {
+			console.log('No existing project .mcp.json found, creating new one');
+		}
+
+		// Ensure mcpServers exists
+		if (!projectMcpConfig.mcpServers) {
+			projectMcpConfig.mcpServers = {};
+		}
+
+		// Add or update the permissions server entry (only if not in YOLO mode)
+		const config = vscode.workspace.getConfiguration('claudeCodeChat');
+		const yoloMode = config.get<boolean>('permissions.yoloMode', false);
+
+		if (!yoloMode) {
+			projectMcpConfig.mcpServers['claude-code-chat-permissions'] = {
+				command: 'node',
+				args: [mcpPermissionsPath],
+				env: {
+					CLAUDE_PERMISSIONS_PATH: permissionRequestsPath
+				},
+				scope: 'project',
+				builtin: true,
+				description: 'Claude Code Chat permissions handler'
+			};
+		} else {
+			// Remove permissions server if YOLO mode is enabled
+			delete projectMcpConfig.mcpServers['claude-code-chat-permissions'];
+		}
+
+		const configContent = new TextEncoder().encode(JSON.stringify(projectMcpConfig, null, 2));
+		await vscode.workspace.fs.writeFile(projectMcpUri, configContent);
+
+		console.log(`Updated project MCP config at: ${projectMcpPath}`);
 	}
 
 	/**
@@ -128,9 +186,31 @@ export class ConfigManager {
 	}
 
 	/**
-	 * Loads MCP servers configuration
+	 * Loads MCP servers configuration from both user and project levels
 	 */
 	async loadMCPServers(): Promise<any> {
+		try {
+			const servers: any = {};
+
+			// Load user-level servers
+			const userServers = await this.loadUserMCPServers();
+			Object.assign(servers, userServers);
+
+			// Load project-level servers (excluding built-in permissions server for UI)
+			const projectServers = await this.loadProjectMCPServers();
+			Object.assign(servers, projectServers);
+
+			return servers;
+		} catch (error) {
+			console.error('Error loading MCP servers:', error);
+			throw new Error('Failed to load MCP servers');
+		}
+	}
+
+	/**
+	 * Loads user-level MCP servers configuration
+	 */
+	async loadUserMCPServers(): Promise<any> {
 		try {
 			const mcpConfigPath = this.getMCPConfigPath();
 			if (!mcpConfigPath) {
@@ -144,18 +224,62 @@ export class ConfigManager {
 				const content = await vscode.workspace.fs.readFile(mcpConfigUri);
 				mcpConfig = JSON.parse(new TextDecoder().decode(content));
 			} catch (error) {
-				console.log('MCP config file not found or error reading:', error);
+				console.log('User MCP config file not found or error reading:', error);
 				// File doesn't exist, return empty servers
 			}
 
-			// Filter out internal servers before returning
-			const filteredServers = Object.fromEntries(
-				Object.entries(mcpConfig.mcpServers || {}).filter(([name]) => name !== 'claude-code-chat-permissions')
+			// Add scope information to servers
+			const scopedServers = Object.fromEntries(
+				Object.entries(mcpConfig.mcpServers || {}).map(([name, config]: [string, any]) => [
+					name,
+					{ ...config, scope: 'user' }
+				])
 			);
+
+			return scopedServers;
+		} catch (error) {
+			console.error('Error loading user MCP servers:', error);
+			return {};
+		}
+	}
+
+	/**
+	 * Loads project-level MCP servers configuration
+	 */
+	async loadProjectMCPServers(): Promise<any> {
+		try {
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+			if (!workspaceFolder) {
+				return {};
+			}
+
+			const projectMcpPath = path.join(workspaceFolder.uri.fsPath, '.mcp.json');
+			const projectMcpUri = vscode.Uri.file(projectMcpPath);
+
+			let projectMcpConfig: any = { mcpServers: {} };
+
+			try {
+				const content = await vscode.workspace.fs.readFile(projectMcpUri);
+				projectMcpConfig = JSON.parse(new TextDecoder().decode(content));
+			} catch (error) {
+				console.log('Project .mcp.json file not found or error reading:', error);
+				// File doesn't exist, return empty servers
+			}
+
+			// Filter out built-in permissions server for UI display and add scope information
+			const filteredServers = Object.fromEntries(
+				Object.entries(projectMcpConfig.mcpServers || {})
+					.filter(([name]) => name !== 'claude-code-chat-permissions')
+					.map(([name, config]: [string, any]) => [
+						name,
+						{ ...config, scope: 'project' }
+					])
+			);
+
 			return filteredServers;
 		} catch (error) {
-			console.error('Error loading MCP servers:', error);
-			throw new Error('Failed to load MCP servers');
+			console.error('Error loading project MCP servers:', error);
+			return {};
 		}
 	}
 
@@ -588,8 +712,16 @@ export class ConfigManager {
 			// Also get servers from JSON config (for legacy support)
 			const jsonServers = await this.loadMCPServers();
 
-			// Merge both sources, CLI takes precedence
+			// Load project-level permissions server for UI display
+			const permissionsServer = await this.loadPermissionsServerForUI();
+
+			// Merge all sources, CLI takes precedence
 			const mergedServers = { ...jsonServers };
+
+			// Add permissions server if available
+			if (permissionsServer) {
+				mergedServers['claude-code-chat-permissions'] = permissionsServer;
+			}
 
 			for (const [name, server] of Object.entries(cliServers)) {
 				mergedServers[name] = {
@@ -604,6 +736,46 @@ export class ConfigManager {
 			console.error('Error loading enhanced MCP servers:', error);
 			// Fallback to JSON config only
 			return await this.loadMCPServers();
+		}
+	}
+
+	/**
+	 * Loads permissions server configuration for UI display
+	 */
+	async loadPermissionsServerForUI(): Promise<any | null> {
+		try {
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+			if (!workspaceFolder) {
+				return null;
+			}
+
+			const projectMcpPath = path.join(workspaceFolder.uri.fsPath, '.mcp.json');
+			const projectMcpUri = vscode.Uri.file(projectMcpPath);
+
+			let projectMcpConfig: any = { mcpServers: {} };
+
+			try {
+				const content = await vscode.workspace.fs.readFile(projectMcpUri);
+				projectMcpConfig = JSON.parse(new TextDecoder().decode(content));
+			} catch (error) {
+				return null;
+			}
+
+			const permissionsServer = projectMcpConfig.mcpServers?.['claude-code-chat-permissions'];
+			if (permissionsServer) {
+				return {
+					...permissionsServer,
+					scope: 'project',
+					builtin: true,
+					nonRemovable: true,
+					description: 'Claude Code Chat permissions handler'
+				};
+			}
+
+			return null;
+		} catch (error) {
+			console.error('Error loading permissions server for UI:', error);
+			return null;
 		}
 	}
 
