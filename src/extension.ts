@@ -511,8 +511,9 @@ class ClaudeChatProvider {
 
 		console.log('Claude command args:', args);
 
-		// Create Claude process
-		const claudeProcess = this._sessionManager.createClaudeProcess(args, actualMessage, cwd);
+		// Create Claude process with permissions path
+		const permissionsPath = this._permissionManager.permissionRequestsPath;
+		const claudeProcess = this._sessionManager.createClaudeProcess(args, actualMessage, cwd, permissionsPath);
 
 		this._rawOutput = '';
 		let errorOutput = '';
@@ -1607,7 +1608,8 @@ Your detailed system prompt here...
 			const args = ['-p', '--dangerously-skip-permissions'];
 
 			// Create the Claude process
-			const claudeProcess = this._sessionManager.createClaudeProcess(args, aiPrompt, cwd);
+			const permissionsPath = this._permissionManager.permissionRequestsPath;
+			const claudeProcess = this._sessionManager.createClaudeProcess(args, aiPrompt, cwd, permissionsPath);
 
 			let fullResponse = '';
 

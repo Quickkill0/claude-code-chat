@@ -11,6 +11,10 @@ vsc-extension-quickstart.md
 **/.vscode-test.*
 backup
 .claude
-claude-code-chat-permissions-mcp/**
+claude-code-chat-permissions-mcp/src/**
+claude-code-chat-permissions-mcp/tsconfig.json
+claude-code-chat-permissions-mcp/package.json
+claude-code-chat-permissions-mcp/package-lock.json
+claude-code-chat-permissions-mcp/*.ts
 .ab-method/**
 docs/**

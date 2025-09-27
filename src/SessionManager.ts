@@ -65,7 +65,7 @@ export class SessionManager {
 	/**
 	 * Creates a new Claude process with the given arguments and message
 	 */
-	createClaudeProcess(args: string[], message: string, cwd: string): cp.ChildProcess {
+	createClaudeProcess(args: string[], message: string, cwd: string, permissionsPath?: string): cp.ChildProcess {
 		const config = vscode.workspace.getConfiguration('claudeCodeChat');
 		const wslEnabled = config.get<boolean>('wsl.enabled', false);
 		const wslDistro = config.get<string>('wsl.distro', 'Ubuntu');
@@ -78,6 +78,17 @@ export class SessionManager {
 			FORCE_COLOR: '0',
 			NO_COLOR: '1'
 		};
+
+		// Add permission-related environment variables
+		if (permissionsPath) {
+			baseEnv.CLAUDE_PERMISSIONS_PATH = permissionsPath;
+		}
+
+		// Add YOLO mode environment variable
+		const yoloMode = config.get<boolean>('permissions.yoloMode', false);
+		if (yoloMode) {
+			baseEnv.CLAUDE_YOLO_MODE = 'true';
+		}
 
 		let claudeProcess: cp.ChildProcess;
 

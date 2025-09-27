@@ -37,19 +37,19 @@ export class ConfigManager {
 			const mcpConfigPath = path.join(mcpConfigDir, 'mcp-servers.json');
 
 			// Try to find mcp-permissions.js in the correct location
-			let mcpPermissionsJsPath = path.join(this._extensionUri.fsPath, 'mcp-permissions.js');
+			let mcpPermissionsJsPath = path.join(this._extensionUri.fsPath, 'claude-code-chat-permissions-mcp', 'dist', 'mcp-permissions.js');
 
-			// Check if file exists at extension root, if not try extension subdirectory
+			// Check if file exists in the mcp subdirectory
 			try {
 				await vscode.workspace.fs.stat(vscode.Uri.file(mcpPermissionsJsPath));
 			} catch {
-				// Try in extension subdirectory (for installed VSIX)
-				mcpPermissionsJsPath = path.join(this._extensionUri.fsPath, 'extension', 'mcp-permissions.js');
+				// Try the compiled version path for different build configurations
+				mcpPermissionsJsPath = path.join(this._extensionUri.fsPath, 'claude-code-chat-permissions-mcp', 'mcp-permissions.js');
 				try {
 					await vscode.workspace.fs.stat(vscode.Uri.file(mcpPermissionsJsPath));
 				} catch {
 					console.error('mcp-permissions.js not found in either location');
-					console.error('Tried:', path.join(this._extensionUri.fsPath, 'mcp-permissions.js'));
+					console.error('Tried:', path.join(this._extensionUri.fsPath, 'claude-code-chat-permissions-mcp', 'dist', 'mcp-permissions.js'));
 					console.error('Tried:', mcpPermissionsJsPath);
 					return;
 				}
@@ -75,14 +75,22 @@ export class ConfigManager {
 				mcpConfig.mcpServers = {};
 			}
 
-			// Add or update the permissions server entry
-			mcpConfig.mcpServers['claude-code-chat-permissions'] = {
-				command: 'node',
-				args: [mcpPermissionsPath],
-				env: {
-					CLAUDE_PERMISSIONS_PATH: permissionRequestsPath
-				}
-			};
+			// Add or update the permissions server entry (only if not in YOLO mode)
+			const config = vscode.workspace.getConfiguration('claudeCodeChat');
+			const yoloMode = config.get<boolean>('permissions.yoloMode', false);
+
+			if (!yoloMode) {
+				mcpConfig.mcpServers['claude-code-chat-permissions'] = {
+					command: 'node',
+					args: [mcpPermissionsPath],
+					env: {
+						CLAUDE_PERMISSIONS_PATH: permissionRequestsPath
+					}
+				};
+			} else {
+				// Remove permissions server if YOLO mode is enabled
+				delete mcpConfig.mcpServers['claude-code-chat-permissions'];
+			}
 
 			const configContent = new TextEncoder().encode(JSON.stringify(mcpConfig, null, 2));
 			await vscode.workspace.fs.writeFile(mcpConfigUri, configContent);
@@ -290,9 +298,33 @@ export class ConfigManager {
 			// Clear any global setting and set workspace setting
 			await config.update('permissions.yoloMode', true, vscode.ConfigurationTarget.Workspace);
 
+			// Regenerate MCP config to remove permissions server
+			await this._initializeMCPConfig();
+
 			console.log('YOLO Mode enabled - all future permissions will be skipped');
 		} catch (error) {
 			console.error('Error enabling YOLO mode:', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Disables YOLO mode and re-enables permissions
+	 */
+	async disableYoloMode(): Promise<void> {
+		try {
+			// Update VS Code configuration to disable YOLO mode
+			const config = vscode.workspace.getConfiguration('claudeCodeChat');
+
+			// Set workspace setting to false
+			await config.update('permissions.yoloMode', false, vscode.ConfigurationTarget.Workspace);
+
+			// Regenerate MCP config to add permissions server back
+			await this._initializeMCPConfig();
+
+			console.log('YOLO Mode disabled - permissions checks re-enabled');
+		} catch (error) {
+			console.error('Error disabling YOLO mode:', error);
 			throw error;
 		}
 	}

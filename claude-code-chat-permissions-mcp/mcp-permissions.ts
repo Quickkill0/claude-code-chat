@@ -77,6 +77,103 @@ function isAlwaysAllowed(toolName: string, input: any): boolean {
   return false;
 }
 
+/**
+ * Gets a command pattern for bash commands - unified with PermissionManager logic
+ */
+function getCommandPattern(command: string): string {
+  const parts = command.trim().split(/\s+/);
+  if (parts.length === 0) return command;
+
+  const baseCmd = parts[0];
+  const subCmd = parts.length > 1 ? parts[1] : '';
+
+  // Common patterns that should use wildcards
+  const patterns = [
+    // Package managers
+    ['npm', 'install', 'npm install *'],
+    ['npm', 'i', 'npm i *'],
+    ['npm', 'add', 'npm add *'],
+    ['npm', 'remove', 'npm remove *'],
+    ['npm', 'uninstall', 'npm uninstall *'],
+    ['npm', 'update', 'npm update *'],
+    ['npm', 'run', 'npm run *'],
+    ['yarn', 'add', 'yarn add *'],
+    ['yarn', 'remove', 'yarn remove *'],
+    ['yarn', 'install', 'yarn install *'],
+    ['pnpm', 'install', 'pnpm install *'],
+    ['pnpm', 'add', 'pnpm add *'],
+    ['pnpm', 'remove', 'pnpm remove *'],
+
+    // Git commands
+    ['git', 'add', 'git add *'],
+    ['git', 'commit', 'git commit *'],
+    ['git', 'push', 'git push *'],
+    ['git', 'pull', 'git pull *'],
+    ['git', 'checkout', 'git checkout *'],
+    ['git', 'branch', 'git branch *'],
+    ['git', 'merge', 'git merge *'],
+    ['git', 'clone', 'git clone *'],
+    ['git', 'reset', 'git reset *'],
+    ['git', 'rebase', 'git rebase *'],
+    ['git', 'tag', 'git tag *'],
+
+    // Docker commands
+    ['docker', 'run', 'docker run *'],
+    ['docker', 'build', 'docker build *'],
+    ['docker', 'exec', 'docker exec *'],
+    ['docker', 'logs', 'docker logs *'],
+    ['docker', 'stop', 'docker stop *'],
+    ['docker', 'start', 'docker start *'],
+    ['docker', 'rm', 'docker rm *'],
+    ['docker', 'rmi', 'docker rmi *'],
+    ['docker', 'pull', 'docker pull *'],
+    ['docker', 'push', 'docker push *'],
+
+    // Build tools
+    ['make', '', 'make *'],
+    ['cargo', 'build', 'cargo build *'],
+    ['cargo', 'run', 'cargo run *'],
+    ['cargo', 'test', 'cargo test *'],
+    ['cargo', 'install', 'cargo install *'],
+    ['mvn', 'compile', 'mvn compile *'],
+    ['mvn', 'test', 'mvn test *'],
+    ['mvn', 'package', 'mvn package *'],
+    ['gradle', 'build', 'gradle build *'],
+    ['gradle', 'test', 'gradle test *'],
+
+    // System commands
+    ['curl', '', 'curl *'],
+    ['wget', '', 'wget *'],
+    ['ssh', '', 'ssh *'],
+    ['scp', '', 'scp *'],
+    ['rsync', '', 'rsync *'],
+    ['tar', '', 'tar *'],
+    ['zip', '', 'zip *'],
+    ['unzip', '', 'unzip *'],
+
+    // Development tools
+    ['node', '', 'node *'],
+    ['python', '', 'python *'],
+    ['python3', '', 'python3 *'],
+    ['pip', 'install', 'pip install *'],
+    ['pip3', 'install', 'pip3 install *'],
+    ['composer', 'install', 'composer install *'],
+    ['composer', 'require', 'composer require *'],
+    ['bundle', 'install', 'bundle install *'],
+    ['gem', 'install', 'gem install *'],
+  ];
+
+  // Find matching pattern
+  for (const [cmd, sub, pattern] of patterns) {
+    if (baseCmd === cmd && (sub === '' || subCmd === sub)) {
+      return pattern;
+    }
+  }
+
+  // Default: return exact command
+  return command;
+}
+
 function generateRequestId(): string {
   return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
@@ -85,6 +182,13 @@ async function requestPermission(tool_name: string, input: any): Promise<{approv
   if (!PERMISSIONS_PATH) {
     console.error("Permissions path not available");
     return { approved: false, reason: "Permissions path not configured" };
+  }
+
+  // Check for YOLO mode via environment variable
+  const yoloMode = process.env.CLAUDE_YOLO_MODE === 'true';
+  if (yoloMode) {
+    console.error(`YOLO Mode enabled - auto-approving tool ${tool_name}`);
+    return { approved: true };
   }
 
   // Check if this tool/command is always allowed for this workspace
