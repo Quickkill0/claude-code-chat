@@ -767,13 +767,8 @@ class ClaudeChatProvider {
 			// Refresh the checkpoint list after restoration
 			this._sendCheckpointList();
 
-			// Clear the conversation after the restored checkpoint
-			// This ensures the conversation reflects the new timeline
-			const commitIndex = this._backupManager.commits.findIndex(c => c.sha === commitSha);
-			if (commitIndex !== -1) {
-				// Keep only messages up to this checkpoint
-				this._conversationManager.truncateAfterCheckpoint(commitIndex);
-			}
+			// Keep the full conversation history to allow back and forth navigation
+			// Users can restore to any checkpoint while preserving conversation context
 		} else {
 			this._postMessage({
 				type: 'restoreError',

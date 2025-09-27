@@ -198,12 +198,8 @@ export class BackupManager {
 			// This ensures we're restoring to the exact state at that checkpoint
 			await exec(`git --git-dir="${this._backupRepoPath}" --work-tree="${workspacePath}" reset --hard ${commitSha}`);
 
-			// Remove commits after the restored point from our list
-			// This ensures the checkpoint list reflects the new timeline
-			const commitIndex = this._commits.findIndex(c => c.sha === commitSha);
-			if (commitIndex !== -1) {
-				this._commits = this._commits.slice(0, commitIndex + 1);
-			}
+			// Keep all commits to allow back and forth navigation between checkpoints
+			// Users should be able to restore to any checkpoint at any time
 
 			vscode.window.showInformationMessage(`Restored to checkpoint: ${commit.message}`);
 
