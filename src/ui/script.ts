@@ -35,13 +35,30 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		let mcpSearchQuery = '';
 		let mcpInstallingServers = new Set();
 
+		// Auto-scroll state management
+		let autoScrollState = {
+			isUserScrolledUp: false,
+			lastScrollHeight: 0,
+			pendingScroll: false,
+			scrollTimeout: null
+		};
+
 		function shouldAutoScroll(messagesDiv) {
-			const threshold = 100; // pixels from bottom
+			const threshold = 50; // pixels from bottom
 			const scrollTop = messagesDiv.scrollTop;
 			const scrollHeight = messagesDiv.scrollHeight;
 			const clientHeight = messagesDiv.clientHeight;
-			
-			return (scrollTop + clientHeight >= scrollHeight - threshold);
+
+			const isAtBottom = (scrollTop + clientHeight >= scrollHeight - threshold);
+
+			// Update user scroll state
+			if (!isAtBottom && !autoScrollState.pendingScroll) {
+				autoScrollState.isUserScrolledUp = true;
+			} else if (isAtBottom) {
+				autoScrollState.isUserScrolledUp = false;
+			}
+
+			return isAtBottom && !autoScrollState.isUserScrolledUp;
 		}
 
 		function scrollToBottomIfNeeded(messagesDiv, shouldScroll = null) {
@@ -49,9 +66,38 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			if (shouldScroll === null) {
 				shouldScroll = shouldAutoScroll(messagesDiv);
 			}
-			
-			if (shouldScroll) {
-				messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+			if (shouldScroll && !autoScrollState.isUserScrolledUp) {
+				autoScrollState.pendingScroll = true;
+
+				// Clear any existing timeout
+				if (autoScrollState.scrollTimeout) {
+					clearTimeout(autoScrollState.scrollTimeout);
+				}
+
+				// Wait for animations to settle, then scroll
+				const performScroll = () => {
+					const newScrollHeight = messagesDiv.scrollHeight;
+
+					// Only scroll if content height has actually changed
+					if (newScrollHeight !== autoScrollState.lastScrollHeight) {
+						messagesDiv.scrollTo({
+							top: newScrollHeight,
+							behavior: 'smooth'
+						});
+						autoScrollState.lastScrollHeight = newScrollHeight;
+					}
+
+					autoScrollState.pendingScroll = false;
+				};
+
+				// Double requestAnimationFrame to ensure DOM updates are complete
+				requestAnimationFrame(() => {
+					requestAnimationFrame(performScroll);
+				});
+
+				// Fallback timeout in case animations take longer
+				autoScrollState.scrollTimeout = setTimeout(performScroll, 500);
 			}
 		}
 
@@ -2301,6 +2347,27 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 						hideCustomMCPModal();
 					}
 				});
+			}
+
+			// Initialize auto-scroll behavior tracking
+			const messagesDiv = document.getElementById('messages');
+			if (messagesDiv) {
+				let scrollTimer;
+
+				messagesDiv.addEventListener('scroll', () => {
+					// Clear existing timer
+					if (scrollTimer) {
+						clearTimeout(scrollTimer);
+					}
+
+					// Set a small delay to avoid excessive state updates during fast scrolling
+					scrollTimer = setTimeout(() => {
+						shouldAutoScroll(messagesDiv); // This will update the scroll state
+					}, 50);
+				});
+
+				// Initialize scroll height tracking
+				autoScrollState.lastScrollHeight = messagesDiv.scrollHeight;
 			}
 		});
 

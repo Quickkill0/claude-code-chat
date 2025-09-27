@@ -73,6 +73,40 @@ const styles = `
         }
     }
 
+    @keyframes messageSlideIn {
+        0% {
+            opacity: 0;
+            transform: translateX(-20px) translateY(10px);
+            filter: blur(4px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateX(0) translateY(0);
+            filter: blur(0);
+        }
+    }
+
+    @keyframes messageGlow {
+        0% { box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
+        50% { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); }
+        100% { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); }
+    }
+
+    @keyframes typingDots {
+        0%, 60%, 100% { transform: scale(1); opacity: 0.7; }
+        30% { transform: scale(1.2); opacity: 1; }
+    }
+
+    @keyframes loadingPulse {
+        0%, 100% { opacity: 0.3; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.05); }
+    }
+
+    @keyframes statusGlow {
+        0%, 100% { box-shadow: 0 0 0 rgba(0, 122, 204, 0); }
+        50% { box-shadow: 0 0 20px rgba(0, 122, 204, 0.4); }
+    }
+
     @keyframes scaleIn {
         0% {
             opacity: 0;
@@ -894,6 +928,7 @@ const styles = `
         flex: 1;
         padding: 12px;
         overflow-y: auto;
+        scroll-behavior: smooth;
         font-family: var(--vscode-editor-font-family);
         font-size: var(--vscode-editor-font-size);
         line-height: 1.5;
@@ -901,6 +936,8 @@ const styles = `
         scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
         position: relative;
         z-index: 2;
+        scroll-padding-top: 20px;
+        scroll-padding-bottom: 20px;
     }
 
     .messages::-webkit-scrollbar {
@@ -922,15 +959,42 @@ const styles = `
     }
 
     .message {
-        margin-bottom: 6px;
-        padding: 6px 10px;
-        border-radius: 6px;
-        animation: fadeIn 0.2s ease forwards;
-        transition: all 0.15s ease;
+        margin-bottom: 16px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        animation: messageSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     }
 
     .message:hover {
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        border-color: rgba(255, 255, 255, 0.12);
+        animation: messageGlow 0.6s ease-out forwards;
+    }
+
+    .message::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+        border-radius: inherit;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .message:hover::after {
+        opacity: 1;
     }
 
     @keyframes fadeIn {
@@ -939,12 +1003,16 @@ const styles = `
     }
 
     .message.user {
-        border: 1px solid rgba(102, 51, 153, 0.15);
-        background: linear-gradient(90deg, rgba(102, 51, 153, 0.03) 0%, transparent 50%);
+        border: 1px solid rgba(139, 92, 246, 0.25);
+        background: linear-gradient(135deg,
+            rgba(139, 92, 246, 0.08) 0%,
+            rgba(139, 92, 246, 0.04) 50%,
+            transparent 100%);
         color: var(--vscode-editor-foreground);
         font-family: var(--vscode-editor-font-family);
         position: relative;
         overflow: hidden;
+        box-shadow: 0 4px 20px rgba(139, 92, 246, 0.12);
     }
 
     .message.user::before {
@@ -953,16 +1021,27 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 3px;
+        width: 4px;
         background: linear-gradient(180deg, #8B5CF6 0%, #6639B8 100%);
+        border-radius: 0 2px 2px 0;
+        box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+    }
+
+    .message.user:hover {
+        border-color: rgba(139, 92, 246, 0.4);
+        box-shadow: 0 8px 30px rgba(139, 92, 246, 0.2);
     }
 
     .message.claude {
-        border: 1px solid rgba(46, 204, 113, 0.1);
-        background: linear-gradient(90deg, rgba(46, 204, 113, 0.03) 0%, transparent 50%);
+        border: 1px solid rgba(46, 204, 113, 0.2);
+        background: linear-gradient(135deg,
+            rgba(46, 204, 113, 0.08) 0%,
+            rgba(46, 204, 113, 0.04) 50%,
+            transparent 100%);
         color: var(--vscode-editor-foreground);
         position: relative;
         overflow: hidden;
+        box-shadow: 0 4px 20px rgba(46, 204, 113, 0.12);
     }
 
     .message.claude::before {
@@ -971,16 +1050,27 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 3px;
+        width: 4px;
         background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
+        border-radius: 0 2px 2px 0;
+        box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
+    }
+
+    .message.claude:hover {
+        border-color: rgba(46, 204, 113, 0.35);
+        box-shadow: 0 8px 30px rgba(46, 204, 113, 0.2);
     }
 
     .message.error {
-        border: 1px solid rgba(231, 76, 60, 0.2);
-        background: linear-gradient(90deg, rgba(231, 76, 60, 0.05) 0%, transparent 50%);
+        border: 1px solid rgba(231, 76, 60, 0.3);
+        background: linear-gradient(135deg,
+            rgba(231, 76, 60, 0.1) 0%,
+            rgba(231, 76, 60, 0.05) 50%,
+            transparent 100%);
         color: var(--vscode-editor-foreground);
         position: relative;
         overflow: hidden;
+        box-shadow: 0 4px 20px rgba(231, 76, 60, 0.15);
     }
 
     .message.error::before {
@@ -989,19 +1079,30 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 3px;
+        width: 4px;
         background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%);
+        border-radius: 0 2px 2px 0;
+        box-shadow: 0 0 10px rgba(231, 76, 60, 0.4);
+    }
+
+    .message.error:hover {
+        border-color: rgba(231, 76, 60, 0.45);
+        box-shadow: 0 8px 30px rgba(231, 76, 60, 0.25);
     }
 
     .message.system {
-        background: linear-gradient(90deg, rgba(127, 140, 141, 0.04) 0%, transparent 100%);
-        border: 1px solid rgba(127, 140, 141, 0.15);
+        background: linear-gradient(135deg,
+            rgba(127, 140, 141, 0.08) 0%,
+            rgba(127, 140, 141, 0.04) 50%,
+            transparent 100%);
+        border: 1px solid rgba(127, 140, 141, 0.2);
         color: var(--vscode-descriptionForeground);
         font-style: italic;
         font-size: 12px;
-        padding: 4px 8px;
+        padding: 8px 12px;
         position: relative;
         overflow: hidden;
+        box-shadow: 0 2px 12px rgba(127, 140, 141, 0.1);
     }
 
     .message.system::before {
@@ -1010,17 +1111,27 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 2px;
-        background: rgba(127, 140, 141, 0.5);
+        width: 3px;
+        background: linear-gradient(180deg, rgba(127, 140, 141, 0.6) 0%, rgba(127, 140, 141, 0.4) 100%);
+        border-radius: 0 2px 2px 0;
+    }
+
+    .message.system:hover {
+        border-color: rgba(127, 140, 141, 0.3);
+        box-shadow: 0 4px 20px rgba(127, 140, 141, 0.15);
     }
 
     .message.tool {
-        border: 1px solid rgba(120, 139, 237, 0.1);
-        background: linear-gradient(90deg, rgba(120, 139, 237, 0.02) 0%, transparent 50%);
+        border: 1px solid rgba(124, 139, 237, 0.2);
+        background: linear-gradient(135deg,
+            rgba(124, 139, 237, 0.08) 0%,
+            rgba(124, 139, 237, 0.04) 50%,
+            transparent 100%);
         color: var(--vscode-editor-foreground);
         position: relative;
         overflow: hidden;
-        padding: 5px 8px;
+        padding: 10px 14px;
+        box-shadow: 0 3px 15px rgba(124, 139, 237, 0.12);
     }
 
     .message.tool::before {
@@ -1029,19 +1140,30 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 3px;
+        width: 4px;
         background: linear-gradient(180deg, #7c8bed 0%, #5d6fe1 100%);
+        border-radius: 0 2px 2px 0;
+        box-shadow: 0 0 10px rgba(124, 139, 237, 0.3);
+    }
+
+    .message.tool:hover {
+        border-color: rgba(124, 139, 237, 0.35);
+        box-shadow: 0 6px 25px rgba(124, 139, 237, 0.2);
     }
 
     .message.tool-result {
-        border: 1px solid rgba(28, 192, 140, 0.15);
-        background: linear-gradient(90deg, rgba(28, 192, 140, 0.02) 0%, transparent 50%);
+        border: 1px solid rgba(28, 192, 140, 0.25);
+        background: linear-gradient(135deg,
+            rgba(28, 192, 140, 0.08) 0%,
+            rgba(28, 192, 140, 0.04) 50%,
+            transparent 100%);
         color: var(--vscode-editor-foreground);
         font-family: var(--vscode-editor-font-family);
         white-space: pre-wrap;
         position: relative;
         overflow: hidden;
-        padding: 5px 8px;
+        padding: 10px 14px;
+        box-shadow: 0 3px 15px rgba(28, 192, 140, 0.12);
     }
 
     .message.tool-result::before {
@@ -1050,19 +1172,30 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 3px;
+        width: 4px;
         background: linear-gradient(180deg, #1cc08c 0%, #16a974 100%);
+        border-radius: 0 2px 2px 0;
+        box-shadow: 0 0 10px rgba(28, 192, 140, 0.3);
+    }
+
+    .message.tool-result:hover {
+        border-color: rgba(28, 192, 140, 0.4);
+        box-shadow: 0 6px 25px rgba(28, 192, 140, 0.2);
     }
 
     .message.thinking {
-        border: 1px solid rgba(186, 85, 211, 0.15);
-        background: linear-gradient(90deg, rgba(186, 85, 211, 0.03) 0%, transparent 50%);
+        border: 1px solid rgba(186, 85, 211, 0.25);
+        background: linear-gradient(135deg,
+            rgba(186, 85, 211, 0.08) 0%,
+            rgba(186, 85, 211, 0.04) 50%,
+            transparent 100%);
         color: var(--vscode-editor-foreground);
         font-family: var(--vscode-editor-font-family);
         font-style: italic;
-        opacity: 0.9;
+        opacity: 0.95;
         position: relative;
         overflow: hidden;
+        box-shadow: 0 3px 15px rgba(186, 85, 211, 0.12);
     }
 
     .message.thinking::before {
@@ -1071,8 +1204,16 @@ const styles = `
         left: 0;
         top: 0;
         bottom: 0;
-        width: 3px;
+        width: 4px;
         background: linear-gradient(180deg, #ba55d3 0%, #9932cc 100%);
+        border-radius: 0 2px 2px 0;
+        box-shadow: 0 0 10px rgba(186, 85, 211, 0.3);
+    }
+
+    .message.thinking:hover {
+        border-color: rgba(186, 85, 211, 0.4);
+        box-shadow: 0 6px 25px rgba(186, 85, 211, 0.2);
+        opacity: 1;
     }
 
     .tool-header {
@@ -1109,49 +1250,121 @@ const styles = `
     .message-header {
         display: flex;
         align-items: center;
-        gap: 6px;
-        margin-bottom: 4px;
-        padding-bottom: 3px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        gap: 8px;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         position: relative;
+        z-index: 2;
+        transition: all 0.3s ease;
+    }
+
+    .message-header::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .message:hover .message-header::after {
+        opacity: 1;
     }
 
     .copy-btn {
         background: transparent;
-        border: none;
+        border: 1px solid transparent;
         color: var(--vscode-descriptionForeground);
         cursor: pointer;
-        padding: 2px;
-        border-radius: 3px;
+        padding: 6px;
+        border-radius: 6px;
         opacity: 0;
-        transition: opacity 0.2s ease;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         margin-left: auto;
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .copy-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .copy-btn:hover::before {
+        left: 100%;
     }
 
     .message:hover .copy-btn {
-        opacity: 0.7;
+        opacity: 0.8;
+        transform: scale(1);
     }
 
     .copy-btn:hover {
         opacity: 1;
-        background-color: var(--vscode-list-hoverBackground);
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .copy-btn:active {
+        transform: scale(0.95);
+        transition: transform 0.1s ease;
     }
 
     .message-icon {
-        width: 14px;
-        height: 14px;
-        border-radius: 3px;
+        width: 16px;
+        height: 16px;
+        border-radius: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 8px;
+        font-size: 9px;
         color: white;
         font-weight: 600;
         flex-shrink: 0;
         margin-left: 2px;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .message-icon::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
+        border-radius: inherit;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .message:hover .message-icon::before {
+        opacity: 1;
+    }
+
+    .message:hover .message-icon {
+        transform: scale(1.1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     }
 
     .message-icon.user {
@@ -1190,16 +1403,29 @@ const styles = `
 
     /* Code blocks generated by markdown parser only */
     .message-content pre.code-block {
-        background-color: var(--vscode-textCodeBlock-background);
-        border: 1px solid var(--vscode-panel-border);
-        border-radius: 4px;
-        padding: 12px;
-        margin: 8px 0;
+        background: linear-gradient(135deg,
+            var(--vscode-textCodeBlock-background) 0%,
+            rgba(var(--vscode-textCodeBlock-background-rgb, 40, 40, 40), 0.95) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+        margin: 12px 0;
         overflow-x: auto;
         font-family: var(--vscode-editor-font-family);
         font-size: 13px;
-        line-height: 1.5;
+        line-height: 1.6;
         white-space: pre;
+        position: relative;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+    }
+
+    .message-content pre.code-block:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
+        transform: translateY(-1px);
     }
 
     .message-content pre.code-block code {
@@ -1216,21 +1442,37 @@ const styles = `
 
     /* Code block container and header */
     .code-block-container {
-        margin: 8px 0;
-        border: 1px solid var(--vscode-panel-border);
-        border-radius: 4px;
-        background-color: var(--vscode-textCodeBlock-background);
+        margin: 12px 0;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        background: linear-gradient(135deg,
+            var(--vscode-textCodeBlock-background) 0%,
+            rgba(var(--vscode-textCodeBlock-background-rgb, 40, 40, 40), 0.95) 100%);
         overflow: hidden;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+    }
+
+    .code-block-container:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
+        transform: translateY(-1px);
     }
 
     .code-block-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 4px 6px;
-        background-color: var(--vscode-editor-background);
-        border-bottom: 1px solid var(--vscode-panel-border);
-        font-size: 10px;
+        padding: 8px 12px;
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.08) 0%,
+            rgba(255, 255, 255, 0.04) 100%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 11px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
     }
 
     .code-block-language {
@@ -1242,22 +1484,49 @@ const styles = `
     }
 
     .code-copy-btn {
-        background: none;
-        border: none;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         color: var(--vscode-descriptionForeground);
         cursor: pointer;
-        padding: 4px;
-        border-radius: 3px;
+        padding: 6px 8px;
+        border-radius: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s ease;
-        opacity: 0.7;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        opacity: 0.8;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .code-copy-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .code-copy-btn:hover::before {
+        left: 100%;
     }
 
     .code-copy-btn:hover {
-        background-color: var(--vscode-list-hoverBackground);
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.2);
         opacity: 1;
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .code-copy-btn:active {
+        transform: scale(0.95);
+        transition: transform 0.1s ease;
     }
 
     .code-block-container .code-block {
@@ -1269,13 +1538,27 @@ const styles = `
 
     /* Inline code */
     .message-content code {
-        background-color: var(--vscode-textCodeBlock-background);
-        border: 1px solid var(--vscode-panel-border);
-        border-radius: 3px;
-        padding: 2px 4px;
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.1) 0%,
+            rgba(255, 255, 255, 0.05) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+        padding: 3px 6px;
         font-family: var(--vscode-editor-font-family);
         font-size: 0.9em;
         color: var(--vscode-editor-foreground);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        transition: all 0.2s ease;
+    }
+
+    .message-content code:hover {
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.15) 0%,
+            rgba(255, 255, 255, 0.08) 100%);
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .priority-badge {
@@ -1497,20 +1780,48 @@ const styles = `
         background: linear-gradient(135deg, rgba(64, 165, 255, 0.15) 0%, rgba(64, 165, 255, 0.1) 100%);
         border: 1px solid rgba(64, 165, 255, 0.3);
         color: #40a5ff;
-        padding: 4px 8px;
-        border-radius: 4px;
+        padding: 6px 12px;
+        border-radius: 8px;
         cursor: pointer;
         font-size: 11px;
-        font-weight: 500;
+        font-weight: 600;
         margin-left: 6px;
-        display: inline-block;
-        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 2px 8px rgba(64, 165, 255, 0.2);
+    }
+
+    .expand-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .expand-btn:hover::before {
+        left: 100%;
     }
 
     .expand-btn:hover {
-        background: linear-gradient(135deg, rgba(64, 165, 255, 0.25) 0%, rgba(64, 165, 255, 0.15) 100%);
-        border-color: rgba(64, 165, 255, 0.5);
-        transform: translateY(-1px);
+        background: linear-gradient(135deg, rgba(64, 165, 255, 0.3) 0%, rgba(64, 165, 255, 0.2) 100%);
+        border-color: rgba(64, 165, 255, 0.6);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(64, 165, 255, 0.3);
+    }
+
+    .expand-btn:active {
+        transform: translateY(0);
+        transition: transform 0.1s ease;
     }
 
     .expanded-content {
@@ -3205,6 +3516,7 @@ const styles = `
     .status.processing .status-indicator {
         background: radial-gradient(circle, #ff9500, #cc7700);
         box-shadow: 0 0 12px rgba(255, 149, 0, 0.6), 0 0 24px rgba(255, 149, 0, 0.3);
+        animation: statusGlow 2s ease-in-out infinite;
     }
 
     .status.processing .status-indicator::after {
@@ -3230,6 +3542,45 @@ const styles = `
     .status-text {
         flex: 1;
     }
+
+    /* Typing indicator */
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        border-radius: 12px;
+        background: linear-gradient(135deg,
+            rgba(46, 204, 113, 0.08) 0%,
+            rgba(46, 204, 113, 0.04) 50%,
+            transparent 100%);
+        border: 1px solid rgba(46, 204, 113, 0.2);
+        animation: messageSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .typing-indicator .message-icon {
+        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    }
+
+    .typing-dots {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+    }
+
+    .typing-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--vscode-foreground);
+        opacity: 0.4;
+        animation: typingDots 1.4s infinite ease-in-out;
+    }
+
+    .typing-dot:nth-child(1) { animation-delay: 0s; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
 
     pre {
