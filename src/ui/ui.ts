@@ -471,9 +471,8 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 			<div class="modal-message" style="padding: 20px;">
 				<p>Are you sure you want to delete the agent "<span id="deleteAgentName"></span>"?</p>
 			</div>
-			<div class="form-buttons">
+			<div class="form-buttons" style="padding-bottom: 16px; padding-right: 16px;">
 				<button class="btn primary" onclick="confirmDeleteAgent()" style="background: #e74c3c;">Delete</button>
-				<button class="btn outlined" onclick="hideDeleteConfirmModal()">Cancel</button>
 			</div>
 		</div>
 	</div>
