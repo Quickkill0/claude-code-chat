@@ -972,10 +972,9 @@ const styles = `
     }
 
     .message:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
         border-color: rgba(255, 255, 255, 0.12);
-        animation: messageGlow 0.6s ease-out forwards;
     }
 
     .message::after {
