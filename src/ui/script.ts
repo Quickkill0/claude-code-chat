@@ -4952,9 +4952,8 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			popup.style.top = 'auto'; // Clear any previous top positioning
 			popup.style.display = 'block';
 
-			// Focus the search input
-			const searchInput = document.getElementById('mentionSearchInput');
-			searchInput.focus();
+			// Keep focus on the main input - no separate search input
+			messageInput.focus();
 		}
 
 		function hideMentionSearch() {
@@ -4971,10 +4970,6 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 		}
 
 		function performMentionSearch(searchTerm) {
-			// Update the search input to show what user is typing
-			const searchInput = document.getElementById('mentionSearchInput');
-			searchInput.value = searchTerm;
-
 			// Request search results from VS Code
 			vscode.postMessage({
 				type: 'mentionSearch',
@@ -4992,9 +4987,11 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 			});
 			document.querySelector(\`[data-type="\${tabType}"]\`).classList.add('active');
 
-			// Re-run search with current term
-			const searchInput = document.getElementById('mentionSearchInput');
-			performMentionSearch(searchInput.value);
+			// Re-run search with current term from main input
+			const text = messageInput.value;
+			const cursorPos = messageInput.selectionStart;
+			const searchTerm = text.substring(mentionStartPos + 1, cursorPos);
+			performMentionSearch(searchTerm);
 		}
 
 		function renderMentionResults() {

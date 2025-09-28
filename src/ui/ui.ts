@@ -123,7 +123,6 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 						<div class="right-controls">
 							<button class="slash-btn" onclick="showSlashCommandsModal()" title="Slash commands">/</button>
 							<button class="ab-btn" onclick="runAbMethod()" title="Run AB Method">AB</button>
-							<button class="at-btn" onclick="showFilePicker()" title="Reference files">@</button>
 							<button class="image-btn" id="imageBtn" onclick="selectImage()" title="Attach images">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -168,9 +167,6 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 	<!-- @ Mention Search Popup -->
 	<div id="mentionSearchPopup" class="mention-search-popup" style="display: none;">
 		<div class="mention-search-content">
-			<div class="mention-search-header">
-				<input type="text" id="mentionSearchInput" placeholder="Search files, folders, and agents..." class="mention-search-input" autocomplete="off">
-			</div>
 			<div class="mention-search-tabs">
 				<button class="mention-tab active" data-type="all" onclick="switchMentionTab('all')">All</button>
 				<button class="mention-tab" data-type="files" onclick="switchMentionTab('files')">Files</button>
