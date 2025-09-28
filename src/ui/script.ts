@@ -3091,6 +3091,12 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 					updateBreadcrumb();
 					break;
 
+				case 'mentionSearchResults':
+					mentionResults = message.data || [];
+					mentionSelectedIndex = mentionResults.length > 0 ? 0 : -1;
+					renderMentionResults();
+					break;
+
 					
 				case 'conversationList':
 					displayConversationList(message.data);
@@ -4865,6 +4871,187 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				showSlashCommandsModal();
 			}
 		});
+
+		// @ Mention Detection and Search
+		let mentionSearchActive = false;
+		let mentionStartPos = -1;
+		let mentionSelectedIndex = -1;
+		let mentionResults = [];
+		let mentionCurrentTab = 'all';
+
+		messageInput.addEventListener('input', (e) => {
+			handleMentionInput();
+		});
+
+		messageInput.addEventListener('keydown', (e) => {
+			if (mentionSearchActive) {
+				if (e.key === 'ArrowDown') {
+					e.preventDefault();
+					mentionSelectedIndex = Math.min(mentionSelectedIndex + 1, mentionResults.length - 1);
+					renderMentionResults();
+				} else if (e.key === 'ArrowUp') {
+					e.preventDefault();
+					mentionSelectedIndex = Math.max(mentionSelectedIndex - 1, 0);
+					renderMentionResults();
+				} else if (e.key === 'Enter' && mentionSelectedIndex >= 0) {
+					e.preventDefault();
+					selectMentionResult(mentionResults[mentionSelectedIndex]);
+				} else if (e.key === 'Escape') {
+					e.preventDefault();
+					hideMentionSearch();
+				}
+			}
+		});
+
+		function handleMentionInput() {
+			const text = messageInput.value;
+			const cursorPos = messageInput.selectionStart;
+
+			// Find @ symbol before cursor
+			let atPos = -1;
+			for (let i = cursorPos - 1; i >= 0; i--) {
+				if (text[i] === '@') {
+					// Check if @ is at start or preceded by whitespace
+					if (i === 0 || /\s/.test(text[i - 1])) {
+						atPos = i;
+						break;
+					}
+				} else if (/\s/.test(text[i])) {
+					// Hit whitespace, stop searching
+					break;
+				}
+			}
+
+			if (atPos >= 0) {
+				const searchTerm = text.substring(atPos + 1, cursorPos);
+				if (!mentionSearchActive) {
+					mentionStartPos = atPos;
+					showMentionSearch();
+				}
+				performMentionSearch(searchTerm);
+			} else if (mentionSearchActive) {
+				hideMentionSearch();
+			}
+		}
+
+		function showMentionSearch() {
+			mentionSearchActive = true;
+			mentionSelectedIndex = 0;
+
+			// Position popup above status bar
+			const popup = document.getElementById('mentionSearchPopup');
+			const statusBar = document.getElementById('status');
+			const input = messageInput;
+
+			const statusRect = statusBar.getBoundingClientRect();
+			const inputRect = input.getBoundingClientRect();
+
+			// Position above the status bar, aligned with input left edge
+			popup.style.left = inputRect.left + 'px';
+			popup.style.bottom = (window.innerHeight - statusRect.top + 8) + 'px';
+			popup.style.top = 'auto'; // Clear any previous top positioning
+			popup.style.display = 'block';
+
+			// Focus the search input
+			const searchInput = document.getElementById('mentionSearchInput');
+			searchInput.focus();
+		}
+
+		function hideMentionSearch() {
+			mentionSearchActive = false;
+			mentionStartPos = -1;
+			mentionSelectedIndex = -1;
+			mentionResults = [];
+
+			const popup = document.getElementById('mentionSearchPopup');
+			popup.style.display = 'none';
+
+			// Return focus to message input
+			messageInput.focus();
+		}
+
+		function performMentionSearch(searchTerm) {
+			// Update the search input to show what user is typing
+			const searchInput = document.getElementById('mentionSearchInput');
+			searchInput.value = searchTerm;
+
+			// Request search results from VS Code
+			vscode.postMessage({
+				type: 'mentionSearch',
+				searchTerm: searchTerm,
+				tabType: mentionCurrentTab
+			});
+		}
+
+		function switchMentionTab(tabType) {
+			mentionCurrentTab = tabType;
+
+			// Update tab UI
+			document.querySelectorAll('.mention-tab').forEach(tab => {
+				tab.classList.remove('active');
+			});
+			document.querySelector(\`[data-type="\${tabType}"]\`).classList.add('active');
+
+			// Re-run search with current term
+			const searchInput = document.getElementById('mentionSearchInput');
+			performMentionSearch(searchInput.value);
+		}
+
+		function renderMentionResults() {
+			const resultsContainer = document.getElementById('mentionSearchResults');
+
+			if (mentionResults.length === 0) {
+				resultsContainer.innerHTML = '<div class="mention-search-empty">No results found</div>';
+				return;
+			}
+
+			resultsContainer.innerHTML = '';
+
+			mentionResults.forEach((result, index) => {
+				const item = document.createElement('div');
+				item.className = 'mention-result-item';
+				if (index === mentionSelectedIndex) {
+					item.classList.add('selected');
+				}
+
+				item.innerHTML = \`
+					<div class="mention-result-icon">\${result.icon}</div>
+					<div class="mention-result-content">
+						<div class="mention-result-name">\${result.name}</div>
+						<div class="mention-result-path">\${result.path}</div>
+					</div>
+					<div class="mention-result-type">\${result.type}</div>
+				\`;
+
+				item.addEventListener('click', () => selectMentionResult(result));
+				resultsContainer.appendChild(item);
+			});
+		}
+
+		function selectMentionResult(result) {
+			// Add to context
+			addToContext({
+				path: result.path,
+				name: result.name,
+				type: result.type,
+				icon: result.icon
+			});
+
+			// Remove @ mention from text
+			const text = messageInput.value;
+			const beforeMention = text.substring(0, mentionStartPos);
+			const afterMention = text.substring(messageInput.selectionStart);
+			messageInput.value = beforeMention + afterMention;
+
+			// Position cursor
+			const newCursorPos = mentionStartPos;
+			messageInput.setSelectionRange(newCursorPos, newCursorPos);
+
+			hideMentionSearch();
+		}
+
+		// Make functions global for onclick handlers
+		window.switchMentionTab = switchMentionTab;
 
 		// Add settings message handler to window message event
 		const originalMessageHandler = window.onmessage;

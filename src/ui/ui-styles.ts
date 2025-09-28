@@ -2392,6 +2392,164 @@ const styles = `
         transform: translateY(-1px);
     }
 
+    /* @ Mention Search Popup */
+    .mention-search-popup {
+        position: absolute;
+        z-index: 10000;
+        background: var(--vscode-dropdown-background);
+        border: 1px solid var(--vscode-dropdown-border);
+        border-radius: 8px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(12px);
+        min-width: 400px;
+        max-width: 500px;
+        max-height: 400px;
+        animation: modalSlideUp 0.2s ease-out;
+    }
+
+    .mention-search-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .mention-search-header {
+        padding: 12px;
+        border-bottom: 1px solid var(--vscode-panel-border);
+    }
+
+    .mention-search-input {
+        width: 100%;
+        background: var(--vscode-input-background);
+        border: 1px solid var(--vscode-input-border);
+        border-radius: 4px;
+        padding: 8px 12px;
+        color: var(--vscode-input-foreground);
+        font-size: 13px;
+        outline: none;
+    }
+
+    .mention-search-input:focus {
+        border-color: var(--vscode-focusBorder);
+        box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+    }
+
+    .mention-search-tabs {
+        display: flex;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--vscode-panel-border);
+        background: var(--vscode-panel-background);
+    }
+
+    .mention-tab {
+        background: none;
+        border: none;
+        color: var(--vscode-tab-inactiveForeground);
+        padding: 8px 16px;
+        font-size: 12px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+    .mention-tab:hover {
+        color: var(--vscode-tab-activeForeground);
+        background: var(--vscode-tab-hoverBackground);
+    }
+
+    .mention-tab.active {
+        color: var(--vscode-tab-activeForeground);
+        border-bottom-color: var(--vscode-tab-activeBorder);
+    }
+
+    .mention-search-results {
+        flex: 1;
+        overflow-y: auto;
+        padding: 4px;
+        max-height: 300px;
+    }
+
+    .mention-result-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        margin: 2px 4px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        gap: 10px;
+    }
+
+    .mention-result-item:hover {
+        background: var(--vscode-list-hoverBackground);
+    }
+
+    .mention-result-item.selected {
+        background: var(--vscode-list-activeSelectionBackground);
+        color: var(--vscode-list-activeSelectionForeground);
+    }
+
+    .mention-result-icon {
+        flex-shrink: 0;
+        font-size: 16px;
+        width: 20px;
+        text-align: center;
+    }
+
+    .mention-result-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .mention-result-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--vscode-list-activeSelectionForeground);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mention-result-path {
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 2px;
+    }
+
+    .mention-result-type {
+        flex-shrink: 0;
+        font-size: 10px;
+        color: var(--vscode-descriptionForeground);
+        background: var(--vscode-badge-background);
+        color: var(--vscode-badge-foreground);
+        padding: 2px 6px;
+        border-radius: 10px;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .mention-search-footer {
+        padding: 8px 12px;
+        border-top: 1px solid var(--vscode-panel-border);
+        background: var(--vscode-panel-background);
+    }
+
+    .mention-search-hint {
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+        text-align: center;
+    }
+
+    .mention-search-empty {
+        padding: 20px;
+        text-align: center;
+        color: var(--vscode-descriptionForeground);
+        font-size: 13px;
+    }
+
     .file-picker-modal {
         position: fixed;
         top: 0;

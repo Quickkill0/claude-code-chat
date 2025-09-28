@@ -265,6 +265,9 @@ class ClaudeChatProvider {
 			case 'getWorkspaceFolders':
 				this._sendWorkspaceFolders(message.searchTerm, message.currentPath);
 				return;
+			case 'mentionSearch':
+				this._sendMentionSearchResults(message.searchTerm, message.tabType);
+				return;
 			case 'selectImageFile':
 				this._selectImageFile();
 				return;
@@ -947,6 +950,153 @@ class ClaudeChatProvider {
 				data: [],
 				currentPath: currentPath || ''
 			});
+		}
+	}
+
+	private async _sendMentionSearchResults(searchTerm?: string, tabType: string = 'all'): Promise<void> {
+		try {
+			let results: any[] = [];
+			const term = searchTerm?.toLowerCase() || '';
+
+			// Search files if tabType is 'all' or 'files'
+			if (tabType === 'all' || tabType === 'files') {
+				const files = await vscode.workspace.findFiles(
+					'**/*',
+					'{**/node_modules/**,**/.git/**,**/dist/**,**/build/**,**/.next/**,**/.nuxt/**,**/target/**,**/bin/**,**/obj/**}',
+					100 // Limit for mention search
+				);
+
+				const fileResults = files
+					.map(file => {
+						const relativePath = vscode.workspace.asRelativePath(file);
+						const fileName = file.path.split('/').pop() || '';
+						return {
+							name: fileName,
+							path: relativePath,
+							type: 'file',
+							icon: this._getFileIcon(fileName)
+						};
+					})
+					.filter(file => {
+						if (!term) {return true;}
+						return file.name.toLowerCase().includes(term) ||
+							file.path.toLowerCase().includes(term);
+					})
+					.slice(0, 20); // Limit file results for mention
+
+				results.push(...fileResults);
+			}
+
+			// Search folders if tabType is 'all' or 'folders'
+			if (tabType === 'all' || tabType === 'folders') {
+				const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+				if (workspaceFolder) {
+					try {
+						const dirContents = await vscode.workspace.fs.readDirectory(workspaceFolder.uri);
+						const excludedDirs = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.nuxt', 'target', 'bin', 'obj', '.vscode', '.ab-method']);
+
+						const folderResults = dirContents
+							.filter(([name, type]) => {
+								return type === vscode.FileType.Directory && !excludedDirs.has(name) && !name.startsWith('.');
+							})
+							.map(([name, type]) => ({
+								name: name,
+								path: name,
+								type: 'folder',
+								icon: '📁'
+							}))
+							.filter(folder => {
+								if (!term) {return true;}
+								return folder.name.toLowerCase().includes(term);
+							})
+							.slice(0, 10); // Limit folder results for mention
+
+						results.push(...folderResults);
+					} catch (error) {
+						console.error('Error reading workspace folders for mention search:', error);
+					}
+				}
+			}
+
+			// Search agents if tabType is 'all' or 'agents'
+			if (tabType === 'all' || tabType === 'agents') {
+				try {
+					const agentResults = await this._getAgentsForMention(term);
+					results.push(...agentResults);
+				} catch (error) {
+					console.error('Error getting agents for mention search:', error);
+				}
+			}
+
+			// Sort results by relevance (exact matches first, then partial matches)
+			results.sort((a, b) => {
+				const aNameMatch = a.name.toLowerCase() === term;
+				const bNameMatch = b.name.toLowerCase() === term;
+				if (aNameMatch && !bNameMatch) {return -1;}
+				if (!aNameMatch && bNameMatch) {return 1;}
+
+				const aStartsWithTerm = a.name.toLowerCase().startsWith(term);
+				const bStartsWithTerm = b.name.toLowerCase().startsWith(term);
+				if (aStartsWithTerm && !bStartsWithTerm) {return -1;}
+				if (!aStartsWithTerm && bStartsWithTerm) {return 1;}
+
+				return a.name.localeCompare(b.name);
+			});
+
+			// Limit total results
+			results = results.slice(0, 50);
+
+			this._postMessage({
+				type: 'mentionSearchResults',
+				data: results
+			});
+		} catch (error) {
+			console.error('Error performing mention search:', error);
+			this._postMessage({
+				type: 'mentionSearchResults',
+				data: []
+			});
+		}
+	}
+
+	private _getFileIcon(filename: string): string {
+		const ext = filename.split('.').pop()?.toLowerCase();
+		switch (ext) {
+			case 'js': case 'jsx': case 'ts': case 'tsx': return '📄';
+			case 'html': case 'htm': return '🌐';
+			case 'css': case 'scss': case 'sass': return '🎨';
+			case 'json': return '📋';
+			case 'md': return '📝';
+			case 'py': return '🐍';
+			case 'java': return '☕';
+			case 'cpp': case 'c': case 'h': return '⚙️';
+			case 'xml': return '📰';
+			case 'pdf': return '📕';
+			case 'zip': case 'tar': case 'gz': return '📦';
+			default: return '📄';
+		}
+	}
+
+	private async _getAgentsForMention(searchTerm?: string): Promise<any[]> {
+		try {
+			const agents = await this._agentManager.listAgents();
+			return agents
+				.filter((agent: any) => {
+					if (!searchTerm) {return true;}
+					const term = searchTerm.toLowerCase();
+					return agent.metadata.name.toLowerCase().includes(term) ||
+						agent.metadata.description?.toLowerCase().includes(term);
+				})
+				.map((agent: any) => ({
+					name: agent.metadata.name,
+					path: `agent:${agent.metadata.name}`,
+					type: 'agent',
+					icon: '🤖'
+				}))
+				.slice(0, 15); // Limit agent results
+		} catch (error) {
+			console.error('Error getting agents for mention:', error);
+			return [];
 		}
 	}
 
