@@ -121,8 +121,8 @@ const getHtml = (isTelemetryEnabled: boolean) => `<!DOCTYPE html>
 							</button>
 						</div>
 						<div class="right-controls">
-							<button class="slash-btn" onclick="showSlashCommandsModal()" title="Slash commands">/</button>
 							<button class="ab-btn" onclick="runAbMethod()" title="Run AB Method">AB</button>
+							<button class="slash-btn" onclick="showSlashCommandsModal()" title="Slash commands">/</button>
 							<button class="image-btn" id="imageBtn" onclick="selectImage()" title="Attach images">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
